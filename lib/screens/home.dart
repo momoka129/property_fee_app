@@ -116,6 +116,17 @@ class _DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<_DashboardPage> {
+  // --- 新增代码开始 ---
+  @override
+  void initState() {
+    super.initState();
+    // 页面加载完成后，立刻在后台检查逾期账单
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // 使用 widget.user.id 获取当前用户ID
+      FirestoreService.checkAndProcessOverdueBills(widget.user.id);
+    });
+  }
+  // --- 新增代码结束 ---
   @override
   Widget build(BuildContext context) {
     final user = widget.user;
@@ -166,12 +177,53 @@ class _DashboardPageState extends State<_DashboardPage> {
             ),
           ),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.notifications_outlined),
-              onPressed: () {
-                _showNotifications(context);
+            // --- 修改开始：替换原来的 IconButton ---
+            StreamBuilder<int>(
+              // 监听当前用户的未读通知数量
+              stream: FirestoreService.getUnreadNotificationCountStream(user.id),
+              builder: (context, snapshot) {
+                final count = snapshot.data ?? 0;
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined),
+                      onPressed: () {
+                        // 点击跳转到我们在 routes.dart 里注册的 notifications 页面
+                        Navigator.pushNamed(context, AppRoutes.notifications);
+                      },
+                    ),
+                    // 如果有未读消息，显示红点
+                    if (count > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            '$count',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
               },
             ),
+            // --- 修改结束 ---
+            const SizedBox(width: 8), // 加一点右边距
           ],
         ),
         SliverToBoxAdapter(

@@ -5,6 +5,7 @@ import '../models/user_model.dart';
 import '../models/package_model.dart';
 import '../models/repair_model.dart';
 import '../models/bank_model.dart';
+import '../models/user_notification_model.dart';
 
 class FirestoreService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -452,6 +453,164 @@ class FirestoreService {
 
     return querySnapshot.docs.isNotEmpty;
   }
+
+
+  // 在 FirestoreService 类内部添加以下方法
+// 确保导入了 BillModel
+
+  /// 核心逻辑：检查逾期账单、计算罚金并发送通知
+  /// 规则：
+  /// 1. 如果当前时间 > dueDate，将状态设为 overdue
+  /// 2. 每逾期1周（7天），罚金增加本金的 5%
+  /// 3. 每天发送一次通知（检查 lastNotificationDate）
+  static Future<void> checkAndProcessOverdueBills(String userId) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // 1. 获取该用户所有 'unpaid' 或 'overdue' 的账单
+    final querySnapshot = await _db
+        .collection('bills')
+        .where('userId', isEqualTo: userId)
+        .where('status', whereIn: ['unpaid', 'overdue'])
+        .get();
+
+    final batch = _db.batch();
+    bool hasUpdates = false;
+
+    for (var doc in querySnapshot.docs) {
+      final bill = BillModel.fromMap(doc.data(), doc.id);
+
+      // 只有当真正过期时才处理
+      if (now.isAfter(bill.dueDate)) {
+        Map<String, dynamic> updates = {};
+
+        // --- A. 状态更新 ---
+        if (bill.status != 'overdue') {
+          updates['status'] = 'overdue';
+        }
+
+        // --- B. 罚金计算 (每周递增 5%) ---
+        final overdueDays = now.difference(bill.dueDate).inDays;
+        // 向上取整，例如逾期1天算第1周，逾期8天算第2周
+        // 如果你想满一周才罚，可以用 floor()
+        final overdueWeeks = (overdueDays / 7).ceil();
+
+        if (overdueWeeks > 0) {
+          const double penaltyRatePerWeek = 0.05; // 5%
+          final newPenalty = bill.amount * penaltyRatePerWeek * overdueWeeks;
+
+          // 只有罚金增加时才更新（防止数据抖动）
+          if (newPenalty > bill.penalty) {
+            updates['penalty'] = newPenalty;
+          }
+        }
+
+        // --- C. 每日通知 ---
+        bool shouldNotify = true;
+        if (bill.lastNotificationDate != null) {
+          final last = bill.lastNotificationDate!;
+          // 如果今天是同一年同一月同一天，就不再通知
+          if (last.year == today.year && last.month == today.month && last.day == today.day) {
+            shouldNotify = false;
+          }
+        }
+
+        if (shouldNotify) {
+          updates['lastNotificationDate'] = Timestamp.fromDate(now);
+
+          // 创建通知
+          final notificationRef = _db.collection('notifications').doc();
+          batch.set(notificationRef, {
+            'userId': userId,
+            'title': 'Overdue Alert: ${bill.title}',
+            'message': 'Your bill is overdue by $overdueDays days. Late fees have been applied. Please pay immediately.',
+            'type': 'bill_overdue', // 前端可以根据这个类型跳转
+            'relatedId': bill.id,
+            'isRead': false,
+            'createdAt': Timestamp.now(),
+          });
+        }
+
+        if (updates.isNotEmpty) {
+          batch.update(doc.reference, updates);
+          hasUpdates = true;
+        }
+      }
+    }
+
+    if (hasUpdates) {
+      await batch.commit();
+      print('Overdue bills processed for user $userId');
+    }
+  }
+
+  /// 获取逾期账单流 (专门用于 Overdue Tab)
+  static Stream<List<BillModel>> getUserOverdueBillsStream(String userId) {
+    return _db
+        .collection('bills')
+        .where('userId', isEqualTo: userId)
+        .where('status', isEqualTo: 'overdue')
+        .orderBy('dueDate', descending: false) // 最早过期的排前面，越紧急越靠前
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return BillModel.fromMap(doc.data(), doc.id);
+      }).toList();
+    });
+  }
+
+
+  static Stream<List<UserNotificationModel>> getUserNotificationsStream(String userId) {
+    return _db
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return UserNotificationModel.fromMap(doc.data(), doc.id);
+      }).toList();
+    });
+  }
+
+  /// 获取未读通知数量流 (用于显示红点)
+  static Stream<int> getUnreadNotificationCountStream(String userId) {
+    return _db
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  /// 标记单条通知为已读
+  static Future<void> markNotificationAsRead(String notificationId) async {
+    await _db.collection('notifications').doc(notificationId).update({'isRead': true});
+  }
+
+  /// 标记所有通知为已读
+  static Future<void> markAllNotificationsAsRead(String userId) async {
+    final batch = _db.batch();
+    final querySnapshot = await _db
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .get();
+
+    for (var doc in querySnapshot.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+
+    if (querySnapshot.docs.isNotEmpty) {
+      await batch.commit();
+    }
+  }
+
+  /// 删除通知
+  static Future<void> deleteNotification(String notificationId) async {
+    await _db.collection('notifications').doc(notificationId).delete();
+  }
+
 }
 
 
