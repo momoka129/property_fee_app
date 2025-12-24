@@ -6,6 +6,7 @@ import '../routes.dart';
 import '../providers/app_provider.dart';
 import '../models/user_model.dart';
 import '../widgets/keyboard_text_field.dart';
+import '../widgets/classical_dialog.dart'; // 确保引入了您的通用弹窗组件
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -28,6 +29,66 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // --- 新增：处理忘记密码逻辑 ---
+  Future<void> _handleForgotPassword() async {
+    final email = _emailController.text.trim();
+
+    // 1. 校验邮箱是否为空
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your email address first.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // 2. 调用 Firebase 发送重置邮件
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+
+      if (!mounted) return;
+
+      // 3. 发送成功，显示雅致弹窗
+      showDialog(
+        context: context,
+        builder: (context) => ClassicalDialog(
+          title: 'Email Sent',
+          content:
+          'A password reset link has been sent to your email:\n\n$email\n\nPlease check your inbox and follow the instructions to reset your password.',
+          confirmText: 'OK',
+          cancelText: 'Close', // Optional: can be used as a secondary close button
+          onConfirm: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      // 错误处理
+      String message = 'Failed to send reset email.';
+      if (e.code == 'user-not-found') {
+        message = 'No user found for this email.';
+      } else if (e.code == 'invalid-email') {
+        message = 'Invalid email address.';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+  // ---------------------------
+
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -37,17 +98,16 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text.trim();
 
     try {
-      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
+      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email, password: password);
       final uid = cred.user?.uid;
       Map<String, dynamic>? userData;
       if (uid != null) {
-      // Read from `accounts` collection (all accounts stored here; doc id == uid)
-      final docRef = FirebaseFirestore.instance.collection('accounts').doc(uid);
+        final docRef = FirebaseFirestore.instance.collection('accounts').doc(uid);
         final doc = await docRef.get();
         if (doc.exists) {
           userData = doc.data();
         } else {
-          // Fallback: try to find account by email in 'accounts' collection (some setups store user profiles there)
           final q = await FirebaseFirestore.instance
               .collection('accounts')
               .where('email', isEqualTo: email)
@@ -56,7 +116,6 @@ class _LoginScreenState extends State<LoginScreen> {
           if (q.docs.isNotEmpty) {
             final acc = q.docs.first.data();
             userData = Map<String, dynamic>.from(acc);
-            // Ensure accounts/{uid} exists (use server timestamp). Keep id, phoneNumber and avatar.
             await docRef.set({
               'id': uid,
               'email': acc['email'] ?? email,
@@ -71,7 +130,6 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
 
-      // build a UserModel from Firestore doc or fallback
       final appProvider = Provider.of<AppProvider>(context, listen: false);
       UserModel userModel;
       if (userData != null) {
@@ -95,7 +153,6 @@ class _LoginScreenState extends State<LoginScreen> {
           avatar: userData['avatar'],
         );
       } else {
-        // No users/{uid} doc — create minimal local model
         userModel = UserModel(
           id: uid ?? '',
           email: email,
@@ -121,20 +178,38 @@ class _LoginScreenState extends State<LoginScreen> {
     } on FirebaseAuthException catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
+
+      // 之前添加的未注册弹窗逻辑
+      if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
+        showDialog(
+          context: context,
+          builder: (context) => ClassicalDialog(
+            title: 'Unregistered Account',
+            content: 'The email address you entered does not appear to be registered. \nWould you like to register a new account now?',
+            confirmText: 'Go to register',
+            onConfirm: () {
+              Navigator.of(context).pop();
+              Navigator.pushNamed(context, AppRoutes.register);
+            },
+          ),
+        );
+        return;
+      }
+
       String message = 'Authentication failed';
-      if (e.code == 'user-not-found') {
-        message = 'No user found for this email.';
-      } else if (e.code == 'wrong-password') {
+      if (e.code == 'wrong-password') {
         message = 'Incorrect password.';
       } else if (e.message != null) {
         message = e.message!;
       }
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.red));
       return;
     } catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Login failed: $e'), backgroundColor: Colors.red));
       return;
     }
   }
@@ -154,7 +229,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Logo and Title
                     Icon(
                       Icons.account_balance,
                       size: 80,
@@ -165,20 +239,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       'Smart Property',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Property Management System',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey.shade600,
-                          ),
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                     const SizedBox(height: 48),
-
-                    // Email Field
                     KeyboardTextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -199,8 +271,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-
-                    // Password Field
                     KeyboardTextField(
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
@@ -232,28 +302,38 @@ class _LoginScreenState extends State<LoginScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 24),
 
-                    // Login Button
+                    // --- 新增：忘记密码按钮 ---
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _isLoading ? null : _handleForgotPassword,
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.grey.shade700, // 颜色稍微深一点
+                        ),
+                        child: const Text('Forgot Password?'),
+                      ),
+                    ),
+                    // -----------------------
+
+                    const SizedBox(height: 24),
                     SizedBox(
                       height: 50,
                       child: FilledButton(
                         onPressed: _isLoading ? null : _handleLogin,
                         child: _isLoading
                             ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                             : const Text('Login'),
                       ),
                     ),
                     const SizedBox(height: 32),
-
-                    const SizedBox(height: 0),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -275,16 +355,4 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-
-  
 }
-
-
-
-
-
-
-
-
-
-
