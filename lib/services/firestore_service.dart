@@ -463,7 +463,15 @@ class FirestoreService {
   /// 1. 如果当前时间 > dueDate，将状态设为 overdue
   /// 2. 每逾期1周（7天），罚金增加本金的 5%
   /// 3. 每天发送一次通知（检查 lastNotificationDate）
+  /// // 添加这个静态变量
+  static bool _hasCheckedOverdueToday = false;
   static Future<void> checkAndProcessOverdueBills(String userId) async {
+    // 如果本次运行已经检查过，直接跳过
+    if (_hasCheckedOverdueToday) return;
+
+    // 可以在这里加一个简单的防抖打印
+    print("Checking for overdue bills...");
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 

@@ -14,6 +14,7 @@ import '../routes.dart';
 import '../providers/app_provider.dart';
 import '../services/avatar_service.dart';
 import '../utils/url_utils.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,7 +25,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  int _refreshKey = 0; // 用于强制刷新Dashboard
+
 
   @override
   void initState() {
@@ -35,11 +36,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _refreshDashboard() {
-    setState(() {
-      _refreshKey++; // 改变key值强制刷新
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final pages = [
           _DashboardPage(
-            key: ValueKey(_refreshKey), // 使用key强制刷新
+
             user: currentUser,
             appProvider: appProvider,
           ),
@@ -76,9 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
               setState(() {
                 _selectedIndex = index;
                 // 切换到主页时刷新数据
-                if (index == 0) {
-                  _refreshDashboard();
-                }
+
               });
             },
             destinations: [
