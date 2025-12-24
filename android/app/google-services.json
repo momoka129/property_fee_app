@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "711087650599",
+    "project_id": "property-fee-app-db",
+    "storage_bucket": "property-fee-app-db.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:711087650599:android:eacd1980b9e9120fce5b02",
+        "android_client_info": {
+          "package_name": "com.xmum.propertyfee.property_fee_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "711087650599-78s0k9eldbs911d820pmce5jfbnh8q10.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBi-FPn6ynMFMyXEBGYHS0eX0neBhq76LQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "711087650599-78s0k9eldbs911d820pmce5jfbnh8q10.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "711087650599-9tnunumtr1ip4fn5ia6v84j4u4enicb5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.xmum.propertyfee.propertyFeeApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

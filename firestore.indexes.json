@@ -1,0 +1,49 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "bills",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "billingDate",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "bills",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "propertySimpleAddress",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "billingDate",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "packages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "arrivedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
+
+

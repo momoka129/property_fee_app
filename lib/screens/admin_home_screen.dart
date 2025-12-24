@@ -1,0 +1,1176 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../utils/url_utils.dart';
+import '../data/mock_data.dart';
+import '../routes.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/firestore_service.dart';
+import '../models/bill_model.dart';
+import '../models/user_model.dart';
+import '../models/announcement_model.dart';
+import '../models/repair_model.dart';
+
+class AdminHomeScreen extends StatefulWidget {
+  const AdminHomeScreen({super.key});
+
+  @override
+  State<AdminHomeScreen> createState() => _AdminHomeScreenState();
+}
+
+class _AdminHomeScreenState extends State<AdminHomeScreen> {
+  int _selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = [
+      const _AdminDashboard(),
+      const _ResidentsManagement(),
+      const _AdminProfile(),
+    ];
+
+    return Scaffold(
+      body: pages[_selectedIndex],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() => _selectedIndex = index);
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard),
+            label: 'Dashboard',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.people_outline),
+            selectedIcon: Icon(Icons.people),
+            label: 'Residents',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminDashboard extends StatefulWidget {
+  const _AdminDashboard();
+
+  @override
+  State<_AdminDashboard> createState() => _AdminDashboardState();
+}
+
+class _AdminDashboardState extends State<_AdminDashboard> {
+  Future<Map<String, dynamic>> _getDashboardStats() async {
+    try {
+      // Get bills data
+      final billsSnapshot = await FirestoreService.getAllBillsStream().first;
+      final unpaidBills = billsSnapshot.where((bill) => bill.status == 'unpaid').length;
+
+      // Get repairs data
+      final repairsSnapshot = await FirestoreService.getAllRepairsStream().first;
+
+      // Get packages data
+      final packagesSnapshot = await FirestoreService.getAllPackagesStream().first;
+      final readyPackages = packagesSnapshot.where((pkg) => pkg.status == 'ready').length;
+
+      return {
+        'totalBills': billsSnapshot.length,
+        'unpaidBills': unpaidBills,
+        'totalRepairs': repairsSnapshot.length,
+        'readyPackages': readyPackages,
+      };
+    } catch (e) {
+      print('Error loading dashboard stats: $e');
+      return {
+        'totalBills': 0,
+        'unpaidBills': 0,
+        'totalRepairs': 0,
+        'readyPackages': 0,
+      };
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _getDashboardStats(),
+      builder: (context, statsSnapshot) {
+        if (statsSnapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final stats = statsSnapshot.data ?? {'totalBills': 0, 'unpaidBills': 0, 'totalRepairs': 0, 'readyPackages': 0};
+        final totalBills = stats['totalBills'] ?? 0;
+        final totalRepairs = stats['totalRepairs'] ?? 0;
+
+        return CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 120,
+              floating: false,
+              pinned: true,
+              flexibleSpace: FlexibleSpaceBar(
+                background: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.orange.shade700,
+                        Colors.deepOrange.shade800,
+                      ],
+                    ),
+                  ),
+                  child: const SafeArea(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(20, 16, 20, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.admin_panel_settings, color: Colors.white, size: 32),
+                              SizedBox(width: 12),
+                              Text(
+                                'Admin Dashboard',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Statistics Cards
+                    Text(
+                      'Overview',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            context,
+                            'Total Bills',
+                            '$totalBills',
+                            Icons.receipt_long,
+                            Colors.blue,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatCard(
+                            context,
+                            'Unpaid',
+                            '${stats['unpaidBills']}',
+                            Icons.pending_actions,
+                            Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            context,
+                            'Repairs',
+                            '$totalRepairs',
+                            Icons.build,
+                            Colors.purple,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatCard(
+                            context,
+                            'Packages',
+                            '${stats['readyPackages']}',
+                            Icons.inventory_2,
+                            Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // Announcements preview + manage button
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Announcements',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pushNamed(context, AppRoutes.adminAnnouncements);
+                          },
+                          child: const Text('Manage'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    StreamBuilder<List<AnnouncementModel>>(
+                      stream: FirestoreService.announcementsStream(limit: 2),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const Text('No announcements');
+                        }
+                        final items = snapshot.data!;
+                        return Column(
+                          children: items.map((ann) {
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: ListTile(
+                                leading: ann.isPinned ? const Icon(Icons.push_pin, color: Colors.orange) : null,
+                                title: Text(ann.title),
+                                subtitle: Text(DateFormat('MMM dd').format(ann.publishedAt)),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    // Recent Activities
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Bills',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pushNamed(context, AppRoutes.adminBills);
+                          },
+                          child: const Text('View all'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    StreamBuilder<List<BillModel>>(
+                      stream: FirestoreService.getAllBillsStream(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (snapshot.hasError) {
+                          return Center(child: Text('Error loading bills: ${snapshot.error}'));
+                        }
+                        final bills = snapshot.data ?? [];
+                        if (bills.isEmpty) {
+                          return const Text('No bills');
+                        }
+
+                        final displayBills = bills.take(3).toList();
+                        return FutureBuilder<List<UserModel>>(
+                          future: FirestoreService.getUsers(),
+                          builder: (context, usersSnapshot) {
+                            final users = usersSnapshot.data ?? [];
+                            final Map<String, UserModel> userById = {
+                              for (var u in users) u.id: u
+                            };
+
+                            return Column(
+                              children: displayBills.map((bill) {
+                                final linkedUser = userById[bill.userId];
+                                final displayName = linkedUser?.name ?? bill.payerName;
+
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  child: ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundColor: bill.status == 'paid'
+                                          ? Colors.green.withOpacity(0.1)
+                                          : Colors.orange.withOpacity(0.1),
+                                      child: Icon(
+                                        bill.status == 'paid' ? Icons.check : Icons.schedule,
+                                        color: bill.status == 'paid' ? Colors.green : Colors.orange,
+                                      ),
+                                    ),
+                                    title: Text(bill.title),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('RM ${bill.amount.toStringAsFixed(2)}'),
+                                        Text(displayName, style: TextStyle(color: Colors.grey[700], fontSize: 12)),
+                                      ],
+                                    ),
+                                    trailing: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: bill.status == 'paid'
+                                            ? Colors.green.withOpacity(0.1)
+                                            : Colors.orange.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        bill.statusText,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: bill.status == 'paid' ? Colors.green : Colors.orange,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Recent Repairs
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Recent Repairs',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pushNamed(context, AppRoutes.adminRepairs);
+                          },
+                          child: const Text('View all'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    StreamBuilder<List<RepairModel>>(
+                      stream: FirestoreService.getAllRepairsStream(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (snapshot.hasError) {
+                          return Center(child: Text('Error loading repairs: ${snapshot.error}'));
+                        }
+                        final repairs = snapshot.data ?? [];
+                        if (repairs.isEmpty) {
+                          return const Text('No repairs');
+                        }
+
+                        final displayRepairs = repairs.take(3).toList();
+                        return FutureBuilder<List<UserModel>>(
+                          future: FirestoreService.getUsers(),
+                          builder: (context, usersSnapshot) {
+                            final users = usersSnapshot.data ?? [];
+                            final Map<String, UserModel> userById = {
+                              for (var u in users) u.id: u
+                            };
+
+                            return Column(
+                              children: displayRepairs.map((repair) {
+                                final linkedUser = userById[repair.userId];
+                                final displayName = linkedUser?.name ?? 'Unknown User';
+
+                                Color statusColor;
+                                switch (repair.status) {
+                                  case 'completed':
+                                    statusColor = Colors.green;
+                                    break;
+                                  case 'in_progress':
+                                    statusColor = Colors.blue;
+                                    break;
+                                  default:
+                                    statusColor = Colors.orange;
+                                }
+
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  child: ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundColor: statusColor.withOpacity(0.1),
+                                      child: Icon(Icons.build, color: statusColor),
+                                    ),
+                                    title: Text(repair.title),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(repair.location),
+                                        Text(displayName, style: TextStyle(color: Colors.grey[700], fontSize: 12)),
+                                      ],
+                                    ),
+                                    trailing: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        repair.statusDisplay,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: statusColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildStatCard(
+    BuildContext context,
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Card(
+      elevation: 0,
+      color: color.withOpacity(0.1),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ResidentsManagement extends StatefulWidget {
+  const _ResidentsManagement();
+
+  @override
+  State<_ResidentsManagement> createState() => _ResidentsManagementState();
+}
+
+class _ResidentsManagementState extends State<_ResidentsManagement> {
+  late Future<List<UserModel>> _futureUsers;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  void _loadUsers() {
+    setState(() {
+      _futureUsers = FirestoreService.getUsers();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Residents Management'),
+      ),
+      body: FutureBuilder<List<UserModel>>(
+        future: _futureUsers,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error loading residents: ${snapshot.error}'));
+          }
+          final residents = snapshot.data ?? [];
+          if (residents.isEmpty) {
+            return const Center(child: Text('No residents found'));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: residents.length,
+            itemBuilder: (context, index) {
+              final resident = residents[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: isValidImageUrl(resident.avatar) ? NetworkImage(resident.avatar!) : null,
+                    child: !isValidImageUrl(resident.avatar) ? Text(resident.name.isNotEmpty ? resident.name[0] : '?') : null,
+                  ),
+                  title: Text(resident.name),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                    Text(resident.email),
+                      Text('Address: ${resident.propertySimpleAddress}'),
+                    ],
+                  ),
+                  onTap: () => _showResidentDetailDialog(resident),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (value) async {
+                      if (value == 'edit') {
+                        await _showEditResidentForm(resident);
+                      } else if (value == 'promote') {
+                        await _confirmPromote(resident);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      const PopupMenuItem(value: 'promote', child: Text('Promote to Admin')),
+                    ],
+                  ),
+                  isThreeLine: true,
+                ),
+              );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddResidentDialog,
+        icon: const Icon(Icons.person_add),
+        label: const Text('New Resident'),
+      ),
+    );
+  }
+
+  Future<void> _showAddResidentDialog() async {
+    final nameCtl = TextEditingController();
+    final emailCtl = TextEditingController();
+    final phoneCtl = TextEditingController();
+    String selectedBuilding = 'Alpha Building';
+    String selectedFloor = 'G';
+    String selectedUnit = '01';
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        // Use StatefulBuilder so dropdown selections rebuild inside the dialog
+        return StatefulBuilder(builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text('Add Resident'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: nameCtl, decoration: const InputDecoration(labelText: 'Name')),
+                  const SizedBox(height: 8),
+                  TextField(controller: emailCtl, decoration: const InputDecoration(labelText: 'Email')),
+                  const SizedBox(height: 8),
+                  TextField(controller: phoneCtl, decoration: const InputDecoration(labelText: 'Phone')),
+                  const SizedBox(height: 12),
+
+                  // Building selection (three choices inline)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text('Building', style: Theme.of(context).textTheme.bodySmall),
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Alpha Building'),
+                        selected: selectedBuilding == 'Alpha Building',
+                        onSelected: (_) => setStateDialog(() => selectedBuilding = 'Alpha Building'),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Beta Building'),
+                        selected: selectedBuilding == 'Beta Building',
+                        onSelected: (_) => setStateDialog(() => selectedBuilding = 'Beta Building'),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Central Building'),
+                        selected: selectedBuilding == 'Central Building',
+                        onSelected: (_) => setStateDialog(() => selectedBuilding = 'Central Building'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InputDecorator(
+                          decoration: const InputDecoration(labelText: 'Floor', border: OutlineInputBorder()),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: selectedFloor,
+                              items: const [
+                                DropdownMenuItem(value: 'G', child: Text('G')),
+                                DropdownMenuItem(value: '1', child: Text('1')),
+                                DropdownMenuItem(value: '2', child: Text('2')),
+                                DropdownMenuItem(value: '3', child: Text('3')),
+                                DropdownMenuItem(value: '4', child: Text('4')),
+                                DropdownMenuItem(value: '5', child: Text('5')),
+                              ],
+                              onChanged: (v) {
+                                if (v == null) return;
+                                setStateDialog(() => selectedFloor = v);
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: InputDecorator(
+                          decoration: const InputDecoration(labelText: 'Unit', border: OutlineInputBorder()),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: selectedUnit,
+                              items: const [
+                                DropdownMenuItem(value: '01', child: Text('01')),
+                                DropdownMenuItem(value: '02', child: Text('02')),
+                              ],
+                              onChanged: (v) {
+                                if (v == null) return;
+                                setStateDialog(() => selectedUnit = v);
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+              ElevatedButton(
+                onPressed: () async {
+                  final propertySimpleAddress = '$selectedBuilding ${selectedFloor}${selectedUnit}';
+
+                  // Check if address is already occupied
+                  final addressExists = await FirestoreService.checkAddressExists(propertySimpleAddress);
+                  if (addressExists) {
+                    // Show an error dialog so the message appears above the current modal
+                    if (!mounted) return;
+                    await showDialog<void>(
+                      context: context,
+                      builder: (ctx) {
+                        return AlertDialog(
+                          title: const Text('Address already in use'),
+                          content: const Text('This address is already in use and cannot be used to create a resident. Please contact the administrator or choose another address.'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK')),
+                          ],
+                        );
+                      },
+                    );
+                    return;
+                  }
+
+                  final payload = {
+                    'name': nameCtl.text.trim(),
+                    'email': emailCtl.text.trim(),
+                    'phoneNumber': phoneCtl.text.trim(),
+                    'propertySimpleAddress': propertySimpleAddress,
+                    'role': 'user',
+                  };
+                  try {
+                    await FirestoreService.createUser(payload);
+                    Navigator.of(context).pop(true);
+                  } catch (e) {
+                    if (!mounted) return;
+                    await showDialog<void>(
+                      context: context,
+                      builder: (ctx) {
+                        return AlertDialog(
+                          title: const Text('Creation failed'),
+                          content: const Text('Failed to create resident. Please try again later.'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK')),
+                          ],
+                        );
+                      },
+                    );
+                  }
+                },
+                child: const Text('Create'),
+              ),
+            ],
+          );
+        });
+      },
+    );
+
+    if (result == true) _loadUsers();
+  }
+
+  Future<void> _showResidentDetailDialog(UserModel user) async {
+    // Show user details (read-only). Exclude id, createdAt, role.
+    await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('${user.name}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isValidImageUrl(user.avatar))
+                  Center(
+                    child: CircleAvatar(
+                      radius: 36,
+                      backgroundImage: NetworkImage(user.avatar!),
+                    ),
+                  ),
+                if (isValidImageUrl(user.avatar)) const SizedBox(height: 12),
+                Text('Name: ${user.name}'),
+                const SizedBox(height: 6),
+                Text('Email: ${user.email}'),
+                const SizedBox(height: 6),
+                Text('Phone: ${user.phoneNumber ?? 'Not set'}'),
+                const SizedBox(height: 6),
+                Text('Address: ${user.propertySimpleAddress}'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Close')),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showEditResidentForm(UserModel user) async {
+    final nameCtl = TextEditingController(text: user.name);
+    final emailCtl = TextEditingController(text: user.email);
+    final phoneCtl = TextEditingController(text: user.phoneNumber ?? '');
+    String selectedBuilding = 'Alpha Building';
+    String selectedFloor = 'G';
+    String selectedUnit = '01';
+
+    // Try to parse existing combined simple address: "Alpha Building G01"
+    try {
+      final spa = user.propertySimpleAddress;
+      if (spa.isNotEmpty) {
+        final lastSpace = spa.lastIndexOf(' ');
+        if (lastSpace > 0 && lastSpace < spa.length - 1) {
+          selectedBuilding = spa.substring(0, lastSpace);
+          final rest = spa.substring(lastSpace + 1); // e.g. G01
+          if (rest.isNotEmpty) {
+            selectedFloor = rest.substring(0, 1);
+            if (rest.length >= 3) {
+              selectedUnit = rest.substring(1);
+            } else if (rest.length == 2) {
+              selectedUnit = rest.substring(1);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text('Edit Resident'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: nameCtl, decoration: const InputDecoration(labelText: 'Name')),
+                  const SizedBox(height: 8),
+                  TextField(controller: emailCtl, decoration: const InputDecoration(labelText: 'Email')),
+                  const SizedBox(height: 8),
+                  TextField(controller: phoneCtl, decoration: const InputDecoration(labelText: 'Phone')),
+                  const SizedBox(height: 12),
+
+                  // Building selection (three choices inline)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text('Building', style: Theme.of(context).textTheme.bodySmall),
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Alpha Building'),
+                        selected: selectedBuilding == 'Alpha Building',
+                        onSelected: (_) => setStateDialog(() => selectedBuilding = 'Alpha Building'),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Beta Building'),
+                        selected: selectedBuilding == 'Beta Building',
+                        onSelected: (_) => setStateDialog(() => selectedBuilding = 'Beta Building'),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Central Building'),
+                        selected: selectedBuilding == 'Central Building',
+                        onSelected: (_) => setStateDialog(() => selectedBuilding = 'Central Building'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InputDecorator(
+                          decoration: const InputDecoration(labelText: 'Floor', border: OutlineInputBorder()),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: selectedFloor,
+                              items: const [
+                                DropdownMenuItem(value: 'G', child: Text('G')),
+                                DropdownMenuItem(value: '1', child: Text('1')),
+                                DropdownMenuItem(value: '2', child: Text('2')),
+                                DropdownMenuItem(value: '3', child: Text('3')),
+                                DropdownMenuItem(value: '4', child: Text('4')),
+                                DropdownMenuItem(value: '5', child: Text('5')),
+                              ],
+                              onChanged: (v) {
+                                if (v == null) return;
+                                setStateDialog(() => selectedFloor = v);
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: InputDecorator(
+                          decoration: const InputDecoration(labelText: 'Unit', border: OutlineInputBorder()),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: selectedUnit,
+                              items: const [
+                                DropdownMenuItem(value: '01', child: Text('01')),
+                                DropdownMenuItem(value: '02', child: Text('02')),
+                              ],
+                              onChanged: (v) {
+                                if (v == null) return;
+                                setStateDialog(() => selectedUnit = v);
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: const Text('Delete Resident'),
+                        content: Text('Are you sure you want to delete ${user.name}? This action cannot be undone.'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+                          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+                        ],
+                      );
+                    },
+                  );
+                  if (ok == true) {
+                    await FirestoreService.deleteUser(user.id);
+                    Navigator.of(context).pop(true);
+                  }
+                },
+                child: const Text('Delete', style: TextStyle(color: Colors.red)),
+              ),
+              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+              ElevatedButton(
+                onPressed: () async {
+                  final propertySimpleAddress = '$selectedBuilding ${selectedFloor}${selectedUnit}';
+
+                  // Check if address is already occupied (excluding current user)
+                  final addressExists = await FirestoreService.checkAddressExists(propertySimpleAddress, excludeUserId: user.id);
+                  if (addressExists) {
+                    // Show an error dialog so the message appears above the current modal
+                    if (!mounted) return;
+                    await showDialog<void>(
+                      context: context,
+                      builder: (ctx) {
+                        return AlertDialog(
+                          title: const Text('Address already in use'),
+                          content: const Text('This address is already in use and cannot be updated. Please contact the administrator or choose another address.'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK')),
+                          ],
+                        );
+                      },
+                    );
+                    return;
+                  }
+
+                  final payload = {
+                    'name': nameCtl.text.trim(),
+                    'email': emailCtl.text.trim(),
+                    'phoneNumber': phoneCtl.text.trim(),
+                    'propertySimpleAddress': propertySimpleAddress,
+                  };
+                  try {
+                    await FirestoreService.updateUser(user.id, payload);
+                    Navigator.of(context).pop(true);
+                  } catch (e) {
+                    if (!mounted) return;
+                    await showDialog<void>(
+                      context: context,
+                      builder: (ctx) {
+                        return AlertDialog(
+                          title: const Text('Save failed'),
+                          content: const Text('Failed to save changes. Please try again later.'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK')),
+                          ],
+                        );
+                      },
+                    );
+                  }
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        });
+      },
+    );
+
+    if (result == true) _loadUsers();
+  }
+
+  Future<void> _confirmPromote(UserModel user) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Promote to Admin'),
+          content: Text('Are you sure you want to promote ${user.name} to admin?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+            ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Promote')),
+          ],
+        );
+      },
+    );
+    if (ok == true) {
+      await FirestoreService.updateUser(user.id, {'role': 'admin'});
+      _loadUsers();
+    }
+  }
+}
+
+class _AdminProfile extends StatefulWidget {
+  const _AdminProfile();
+
+  @override
+  State<_AdminProfile> createState() => _AdminProfileState();
+}
+
+class _AdminProfileState extends State<_AdminProfile> {
+  UserModel? _admin;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAdmin();
+  }
+
+  Future<void> _loadAdmin() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      UserModel? admin;
+      if (uid != null) {
+        admin = await FirestoreService.getAdminByUid(uid);
+      }
+      // fallback: pick first admin in collection
+      if (admin == null) {
+        final admins = await FirestoreService.getAdmins();
+        if (admins.isNotEmpty) admin = admins.first;
+      }
+      setState(() {
+        _admin = admin ?? MockData.currentUser;
+        _isLoading = false;
+      });
+    } catch (e) {
+      // on error, fallback to MockData
+      setState(() {
+        _admin = MockData.currentUser;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final admin = _admin!;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Admin Profile'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              // clear local mock and sign out
+              MockData.currentUser = null;
+              try {
+                await FirebaseAuth.instance.signOut();
+              } catch (_) {}
+              Navigator.pushReplacementNamed(context, AppRoutes.login);
+            },
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Center(
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 50,
+                  backgroundImage: isValidImageUrl(admin.avatar) ? NetworkImage(admin.avatar!) : null,
+                  child: !isValidImageUrl(admin.avatar) ? const Icon(Icons.person, size: 50) : null,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  admin.name,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'ADMINISTRATOR',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.email),
+                  title: const Text('Email'),
+                  subtitle: Text(admin.email),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.phone),
+                  title: const Text('Phone'),
+                  subtitle: Text(admin.phoneNumber ?? 'Not set'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.calendar_today),
+                  title: const Text('Member Since'),
+                  subtitle: Text(DateFormat('MMM dd, yyyy').format(admin.createdAt)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.settings),
+                  title: const Text('Settings'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Settings coming soon')),
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.help),
+                  title: const Text('Help & Support'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pushNamed(context, AppRoutes.helpSupport);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
