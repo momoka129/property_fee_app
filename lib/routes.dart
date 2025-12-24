@@ -20,6 +20,7 @@ import 'screens/admin_parking_screen.dart';
 import 'screens/manage_banks_screen.dart';
 import 'screens/bank_transfer_screen.dart';
 import 'models/bill_model.dart';
+import 'screens/admin_packages_screen.dart';
 // route-only file; models are not required here
 
 class AppRoutes {
@@ -48,6 +49,7 @@ class AppRoutes {
   static const visitors = '/visitors';
   static const amenities = '/amenities';
   static const language = '/language';
+  static const adminPackages = '/admin-packages';
 
   static Map<String, WidgetBuilder> map = {
     login: (_) => const LoginScreen(),
@@ -69,6 +71,7 @@ class AppRoutes {
     editProfile: (_) => const EditProfileScreen(),
     changePassword: (_) => const ChangePasswordScreen(),
     manageBanks: (_) => const ManageBanksScreen(),
+    adminPackages: (_) => const AdminPackagesScreen(),
     bankTransfer: (context) {
       final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args == null) return const SizedBox.shrink();
