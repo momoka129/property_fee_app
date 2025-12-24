@@ -5,10 +5,44 @@ import '../models/user_notification_model.dart';
 import '../services/firestore_service.dart';
 import '../providers/app_provider.dart';
 import 'bill_detail.dart';
-import 'announcement_detail_screen.dart'; // 假设你有这个，没有也没关系
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget { // 改为 StatefulWidget
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> with SingleTickerProviderStateMixin {
+  late Stream<List<UserNotificationModel>> _notificationsStream;
+  late TabController _tabController;
+  String? _currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 获取当前用户ID
+    final user = Provider.of<AppProvider>(context, listen: false).currentUser;
+
+    // 只有当用户ID发生变化（或首次初始化）时，才重新创建 Stream
+    // 这解决了“一闪而过”的问题
+    if (user != null && user.id != _currentUserId) {
+      _currentUserId = user.id;
+      _notificationsStream = FirestoreService.getUserNotificationsStream(user.id);
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,47 +50,52 @@ class NotificationsScreen extends StatelessWidget {
 
     if (user == null) return const Scaffold(body: Center(child: Text('Please login')));
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Notifications'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Unread'),
-              Tab(text: 'History'),
-            ],
-          ),
-          actions: [
-            // 只有用户想一键清空时才用这个
-            IconButton(
-              icon: const Icon(Icons.done_all),
-              tooltip: 'Mark all as read',
-              onPressed: () => _showMarkAllReadDialog(context, user.id),
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Notifications'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Unread'),
+            Tab(text: 'History'),
           ],
         ),
-        body: StreamBuilder<List<UserNotificationModel>>(
-          stream: FirestoreService.getUserNotificationsStream(user.id),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.done_all),
+            tooltip: 'Mark all as read',
+            onPressed: () => _showMarkAllReadDialog(context, user.id),
+          ),
+        ],
+      ),
+      // 使用初始化好的 _notificationsStream，而不是每次 build 都创建新的
+      body: StreamBuilder<List<UserNotificationModel>>(
+        stream: _notificationsStream,
+        builder: (context, snapshot) {
+          // 调试信息：如果出错，打印错误
+          if (snapshot.hasError) {
+            print("Stream Error: ${snapshot.error}");
+            return Center(child: Text('Error loading notifications: ${snapshot.error}'));
+          }
 
-            final allNotifications = snapshot.data ?? [];
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            // 分类：未读 vs 已读
-            final unreadList = allNotifications.where((n) => !n.isRead).toList();
-            final readList = allNotifications.where((n) => n.isRead).toList();
+          final allNotifications = snapshot.data ?? [];
 
-            return TabBarView(
-              children: [
-                _buildNotificationList(context, unreadList, isUnreadTab: true),
-                _buildNotificationList(context, readList, isUnreadTab: false),
-              ],
-            );
-          },
-        ),
+          // 确保 isRead 判断准确
+          final unreadList = allNotifications.where((n) => n.isRead == false).toList();
+          final readList = allNotifications.where((n) => n.isRead == true).toList();
+
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _buildNotificationList(context, unreadList, isUnreadTab: true),
+              _buildNotificationList(context, readList, isUnreadTab: false),
+            ],
+          );
+        },
       ),
     );
   }
@@ -141,11 +180,7 @@ class NotificationsScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              onTap: () {
-                // 【重点】这里绝对不要调用 markAsRead
-                // 只打开弹窗
-                _showDetailDialog(context, notification);
-              },
+              onTap: () => _showDetailDialog(context, notification),
             ),
           ),
         );
@@ -187,40 +222,35 @@ class NotificationsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                notification.message,
-                style: const TextStyle(fontSize: 15, height: 1.5),
-              ),
+              Text(notification.message, style: const TextStyle(fontSize: 15, height: 1.5)),
             ],
           ),
         ),
         actions: [
-          // 按钮 1：仅仅关闭（不标记已读）
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close', style: TextStyle(color: Colors.grey)),
           ),
-
-          // 按钮 2：如果有跳转链接，显示跳转按钮 (不自动标记已读，看用户选择)
           if (notification.relatedId != null && notification.type != 'general')
             OutlinedButton.icon(
               icon: const Icon(Icons.open_in_new, size: 16),
               label: Text(_getActionLabel(notification.type)),
               onPressed: () {
-                Navigator.pop(context); // 关弹窗
-                _handleNavigation(context, notification); // 跳转
+                Navigator.pop(context);
+                _handleNavigation(context, notification);
               },
             ),
-
-          // 按钮 3：【核心】标记为已读并归档
-          // 只有点这个，它才会消失（移动到History）
+          // 标记已读按钮
           if (!notification.isRead)
             FilledButton.icon(
               icon: const Icon(Icons.check, size: 16),
               label: const Text('Mark as Read'),
-              onPressed: () {
-                FirestoreService.markNotificationAsRead(notification.id);
+              onPressed: () async {
+                // 1. 先关闭弹窗，避免等待
                 Navigator.pop(context);
+                // 2. 更新数据库
+                await FirestoreService.markNotificationAsRead(notification.id);
+                // 3. 因为是 Stream，UI 会自动刷新并将该条目移到 History
               },
             ),
         ],
@@ -238,11 +268,9 @@ class NotificationsScreen extends StatelessWidget {
             context,
             MaterialPageRoute(builder: (context) => BillDetailScreen(bill: bill)),
           );
-        } else if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bill not found')));
         }
       } catch (e) {
-        // error
+        print("Navigation error: $e");
       }
     }
   }
@@ -257,8 +285,8 @@ class NotificationsScreen extends StatelessWidget {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           FilledButton(
             onPressed: () {
-              FirestoreService.markAllNotificationsAsRead(userId);
               Navigator.pop(context);
+              FirestoreService.markAllNotificationsAsRead(userId);
             },
             child: const Text('Confirm'),
           ),

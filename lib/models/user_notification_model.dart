@@ -2,49 +2,34 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserNotificationModel {
   final String id;
-  final String userId;
   final String title;
   final String message;
-  final String type; // 'bill_overdue', 'announcement', 'package', etc.
-  final String? relatedId; // 关联的账单ID或包裹ID
-  final bool isRead;
+  final bool isRead; // 必须是 bool
   final DateTime createdAt;
+  final String type;
+  final String? relatedId;
 
   UserNotificationModel({
     required this.id,
-    required this.userId,
     required this.title,
     required this.message,
-    required this.type,
-    this.relatedId,
     required this.isRead,
     required this.createdAt,
+    required this.type,
+    this.relatedId,
   });
 
-  factory UserNotificationModel.fromMap(Map<String, dynamic> map, String id) {
+  factory UserNotificationModel.fromMap(Map<String, dynamic> data, String id) {
     return UserNotificationModel(
       id: id,
-      userId: map['userId'] ?? '',
-      title: map['title'] ?? '',
-      message: map['message'] ?? '',
-      type: map['type'] ?? 'general',
-      relatedId: map['relatedId'],
-      isRead: map['isRead'] ?? false,
-      createdAt: map['createdAt'] is Timestamp
-          ? (map['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
+      title: data['title'] ?? '',
+      message: data['message'] ?? '',
+      // ⚠️ 重点：确保这里能正确处理 null，且强制转为 bool
+      isRead: data['isRead'] == true,
+      // 处理 Timestamp
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      type: data['type'] ?? 'general',
+      relatedId: data['relatedId'],
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'userId': userId,
-      'title': title,
-      'message': message,
-      'type': type,
-      'relatedId': relatedId,
-      'isRead': isRead,
-      'createdAt': Timestamp.fromDate(createdAt),
-    };
   }
 }
