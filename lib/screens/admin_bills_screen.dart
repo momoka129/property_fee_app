@@ -186,33 +186,53 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
                     });
                   },
                 ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Text('Due: ${DateFormat('yyyy-MM-dd').format(dueDate)}'),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () async {
-                      final picked = await showDatePicker(context: context, initialDate: dueDate, firstDate: DateTime(2000), lastDate: DateTime(2100));
-                      if (picked != null) dueDate = picked;
-                    },
-                    child: const Text('Change'),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Text('Billing: ${DateFormat('yyyy-MM-dd').format(billingDate)}'),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () async {
-                      final picked = await showDatePicker(context: context, initialDate: billingDate, firstDate: DateTime(2000), lastDate: DateTime(2100));
-                      if (picked != null) billingDate = picked;
-                    },
-                    child: const Text('Change'),
-                  ),
-                ],
-              ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text('Due: ${DateFormat('yyyy-MM-dd').format(dueDate)}'),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                            context: context,
+                            initialDate: dueDate,
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2100)
+                        );
+                        // 修改点：使用 setState 更新 UI
+                        if (picked != null) {
+                          setState(() {
+                            dueDate = picked;
+                          });
+                        }
+                      },
+                      child: const Text('Change'),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Text('Billing: ${DateFormat('yyyy-MM-dd').format(billingDate)}'),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                            context: context,
+                            initialDate: billingDate,
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2100)
+                        );
+                        // 修改点：使用 setState 更新 UI
+                        if (picked != null) {
+                          setState(() {
+                            billingDate = picked;
+                          });
+                        }
+                      },
+                      child: const Text('Change'),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),

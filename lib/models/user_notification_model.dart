@@ -2,41 +2,49 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserNotificationModel {
   final String id;
-  final String billId;
+  final String userId;
   final String title;
-  final String body;
+  final String message;
+  final String type; // 'bill_overdue', 'announcement', 'package', etc.
+  final String? relatedId; // 关联的账单ID或包裹ID
+  final bool isRead;
   final DateTime createdAt;
-  final bool read;
 
   UserNotificationModel({
     required this.id,
-    required this.billId,
+    required this.userId,
     required this.title,
-    required this.body,
+    required this.message,
+    required this.type,
+    this.relatedId,
+    required this.isRead,
     required this.createdAt,
-    required this.read,
   });
 
   factory UserNotificationModel.fromMap(Map<String, dynamic> map, String id) {
-    final ts = map['createdAt'];
-    DateTime created = DateTime.now();
-    if (ts is Timestamp) {
-      created = ts.toDate();
-    } else if (ts is DateTime) {
-      created = ts;
-    }
-
     return UserNotificationModel(
       id: id,
-      billId: map['billId'] ?? '',
+      userId: map['userId'] ?? '',
       title: map['title'] ?? '',
-      body: map['body'] ?? '',
-      createdAt: created,
-      read: (map['read'] ?? false) as bool,
+      message: map['message'] ?? '',
+      type: map['type'] ?? 'general',
+      relatedId: map['relatedId'],
+      isRead: map['isRead'] ?? false,
+      createdAt: map['createdAt'] is Timestamp
+          ? (map['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'userId': userId,
+      'title': title,
+      'message': message,
+      'type': type,
+      'relatedId': relatedId,
+      'isRead': isRead,
+      'createdAt': Timestamp.fromDate(createdAt),
+    };
+  }
 }
-
-
-
-
