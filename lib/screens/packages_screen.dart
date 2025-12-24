@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart'; // 需要导入 provider
 import '../utils/url_utils.dart';
 import 'package:intl/intl.dart';
-import '../data/mock_data.dart';
 import '../models/package_model.dart';
+import '../services/firestore_service.dart'; // 导入 Firestore 服务
+import '../providers/app_provider.dart'; // 导入 AppProvider 获取用户信息
 
 class PackagesScreen extends StatefulWidget {
   const PackagesScreen({super.key});
@@ -15,32 +17,69 @@ class PackagesScreen extends StatefulWidget {
 class _PackagesScreenState extends State<PackagesScreen> {
   @override
   Widget build(BuildContext context) {
-    final readyPackages = MockData.packages.where((p) => p.status == 'ready_for_pickup').toList();
-    final collectedPackages = MockData.packages.where((p) => p.status == 'collected').toList();
+    // 获取当前用户
+    final appProvider = Provider.of<AppProvider>(context);
+    final user = appProvider.currentUser;
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Package Management'),
-          bottom: TabBar(
-            tabs: [
-              Tab(text: 'Ready (${readyPackages.length})'),
-              Tab(text: 'Collected (${collectedPackages.length})'),
-            ],
+    // 如果用户未登录，显示提示
+    if (user == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Package Management')),
+        body: const Center(child: Text('Please login to view packages')),
+      );
+    }
+
+    // 使用 StreamBuilder 监听 Firebase 数据
+    return StreamBuilder<List<PackageModel>>(
+      stream: FirestoreService.getUserPackagesStream(user.id),
+      builder: (context, snapshot) {
+        // 加载状态
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Package Management')),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // 错误处理
+        if (snapshot.hasError) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Package Management')),
+            body: Center(child: Text('Error: ${snapshot.error}')),
+          );
+        }
+
+        // 获取数据并分类
+        final packages = snapshot.data ?? [];
+        final readyPackages = packages.where((p) => p.status == 'ready_for_pickup').toList();
+        final collectedPackages = packages.where((p) => p.status == 'collected').toList();
+
+        // 构建 UI (TabController 包裹 Scaffold)
+        return DefaultTabController(
+          length: 2,
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('Package Management'),
+              bottom: TabBar(
+                tabs: [
+                  Tab(text: 'Ready (${readyPackages.length})'),
+                  Tab(text: 'Collected (${collectedPackages.length})'),
+                ],
+              ),
+            ),
+            body: TabBarView(
+              children: [
+                _buildPackageList(context, readyPackages, true),
+                _buildPackageList(context, collectedPackages, false),
+              ],
+            ),
           ),
-        ),
-        body: TabBarView(
-          children: [
-            _buildPackageList(context, readyPackages, true),
-            _buildPackageList(context, collectedPackages, false),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildPackageList(BuildContext context, List packages, bool isReady) {
+  Widget _buildPackageList(BuildContext context, List<PackageModel> packages, bool isReady) {
     if (packages.isEmpty) {
       return Center(
         child: Column(
@@ -79,6 +118,12 @@ class _PackagesScreenState extends State<PackagesScreen> {
                         width: 60,
                         height: 60,
                         fit: BoxFit.cover,
+                        errorWidget: (context, url, error) => Container(
+                          width: 60,
+                          height: 60,
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.broken_image),
+                        ),
                       ),
                     )
                   else
@@ -99,8 +144,8 @@ class _PackagesScreenState extends State<PackagesScreen> {
                         Text(
                           package.courier,
                           style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -111,9 +156,9 @@ class _PackagesScreenState extends State<PackagesScreen> {
                         Text(
                           'Tracking: ${package.trackingNumber}',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.grey.shade600,
-                                fontSize: 11,
-                              ),
+                            color: Colors.grey.shade600,
+                            fontSize: 11,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Row(
@@ -160,9 +205,10 @@ class _PackagesScreenState extends State<PackagesScreen> {
     );
   }
 
-  void _showPackageDetails(BuildContext context, package) {
+  void _showPackageDetails(BuildContext context, PackageModel package) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true, // 允许弹窗在需要时占据更多高度
       builder: (context) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -172,8 +218,8 @@ class _PackagesScreenState extends State<PackagesScreen> {
             Text(
               'Package Details',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 24),
             if (isValidImageUrl(package.image)) ...[
@@ -184,6 +230,10 @@ class _PackagesScreenState extends State<PackagesScreen> {
                   width: double.infinity,
                   height: 200,
                   fit: BoxFit.cover,
+                  errorWidget: (context, url, error) => const SizedBox(
+                    height: 200,
+                    child: Center(child: Icon(Icons.broken_image, size: 50)),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -199,34 +249,34 @@ class _PackagesScreenState extends State<PackagesScreen> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: () {
+                  onPressed: () async {
                     // 更新包裹状态
-                    final packageIndex = MockData.packages.indexWhere((p) => p.id == package.id);
-                    if (packageIndex != -1) {
-                      final updatedPackage = PackageModel(
-                        id: package.id,
-                        userId: package.userId,
-                        trackingNumber: package.trackingNumber,
-                        courier: package.courier,
-                        description: package.description,
-                        status: 'collected',
-                        arrivedAt: package.arrivedAt,
+                    try {
+                      await FirestoreService.updatePackageStatus(
+                        package.id,
+                        'collected',
                         collectedAt: DateTime.now(),
-                        location: package.location,
-                        image: package.image,
-                        notes: package.notes,
                       );
-                      MockData.packages[packageIndex] = updatedPackage;
-                    }
 
-                    Navigator.pop(context);
-                    setState(() {}); // 刷新页面
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Package marked as collected'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Package marked as collected'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
                   },
                   child: const Text('Mark as Collected'),
                 ),
@@ -262,4 +312,3 @@ class _PackagesScreenState extends State<PackagesScreen> {
     );
   }
 }
-

@@ -210,6 +210,9 @@ class _AdminDashboardState extends State<_AdminDashboard> {
                             '${stats['readyPackages']}',
                             Icons.inventory_2,
                             Colors.green,
+                            onTap: () {
+                              Navigator.pushNamed(context, AppRoutes.adminPackages);
+                            },
                           ),
                         ),
                       ],
@@ -458,39 +461,44 @@ class _AdminDashboardState extends State<_AdminDashboard> {
   }
 
   Widget _buildStatCard(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+      BuildContext context,
+      String title,
+      String value,
+      IconData icon,
+      Color color, {
+        VoidCallback? onTap, // 新增参数
+      }) {
     return Card(
       elevation: 0,
       color: color.withOpacity(0.1),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: TextStyle(
-                color: Colors.grey.shade700,
-                fontSize: 12,
+      clipBehavior: Clip.antiAlias, // 确保水波纹效果不溢出
+      child: InkWell( // 使用 InkWell 包裹内容以支持点击
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: color, size: 28),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontSize: 12,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
