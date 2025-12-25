@@ -15,6 +15,7 @@ import '../providers/app_provider.dart';
 import '../services/avatar_service.dart';
 import '../utils/url_utils.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/glass_container.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -854,7 +855,6 @@ class _ServicesPage extends StatelessWidget {
     );
   }
 }
-
 class _ProfilePage extends StatelessWidget {
   final UserModel user;
   final AppProvider appProvider;
@@ -863,28 +863,97 @@ class _ProfilePage extends StatelessWidget {
 
   ImageProvider? _getAvatarImageProvider(String? avatarPath) {
     if (avatarPath != null && avatarPath.isNotEmpty) {
-      // 如果是本地文件路径
       if (avatarPath.startsWith('/')) {
         if (AvatarService.isValidAvatarPath(avatarPath)) {
           return FileImage(File(avatarPath));
         }
-      }
-      // 如果是网络URL
-      else if (isValidImageUrl(avatarPath)) {
+      } else if (isValidImageUrl(avatarPath)) {
         return CachedNetworkImageProvider(avatarPath);
       }
     }
     return null;
   }
 
+  // 辅助方法：构建玻璃风格的列表项 (适配白色背景)
+  Widget _buildGlassListTile(BuildContext context, {
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required VoidCallback onTap,
+  }) {
+    final primaryColor = Theme.of(context).primaryColor;
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: primaryColor.withOpacity(0.1), // 使用主题色的淡色背景
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: primaryColor), // 使用主题色图标
+      ),
+      title: Text(
+          title,
+          style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500) // 深色文字
+      ),
+      subtitle: subtitle != null
+          ? Text(subtitle, style: const TextStyle(color: Colors.black54)) // 深色副标题
+          : null,
+      trailing: const Icon(Icons.chevron_right, color: Colors.black38), // 深色图标
+      onTap: onTap,
+    );
+  }
+
+  // 辅助方法：构建信息行 (适配白色背景)
+  Widget _buildInfoRow(BuildContext context, IconData icon, String label, String value) {
+    final primaryColor = Theme.of(context).primaryColor;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: primaryColor), // 使用主题色图标
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.black54, // 深色标签
+                ),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87, // 深色数值
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).primaryColor;
     return Consumer<AppProvider>(
       builder: (context, appProvider, _) {
         final currentUser = appProvider.currentUser ?? user;
+
         return Scaffold(
+          backgroundColor: Colors.white, // 改为白色背景
           appBar: AppBar(
-            title: Text(appProvider.getLocalizedText('profile')),
+            title: Text(
+              appProvider.getLocalizedText('profile'),
+              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold), // 黑色标题
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            iconTheme: const IconThemeData(color: Colors.black), // 黑色图标
             actions: [
               IconButton(
                 icon: const Icon(Icons.logout),
@@ -899,185 +968,161 @@ class _ProfilePage extends StatelessWidget {
           body: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              // User Info
+              // User Info Area
               Center(
                 child: Column(
                   children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundImage: _getAvatarImageProvider(currentUser.avatar),
-                      child: (currentUser.avatar == null ||
-                              (!isValidImageUrl(currentUser.avatar!) &&
-                               !AvatarService.isValidAvatarPath(currentUser.avatar!)))
-                          ? Text(
-                              // Safely build initials: ignore empty parts before taking first char
-                              currentUser.name
-                                  .split(' ')
-                                  .where((part) => part.isNotEmpty)
-                                  .map((part) => part[0])
-                                  .take(2)
-                                  .join()
-                                  .toUpperCase(),
-                              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                            )
-                          : null,
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: primaryColor.withOpacity(0.2), width: 2), // 主题色边框
+                      ),
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundColor: primaryColor.withOpacity(0.1),
+                        backgroundImage: _getAvatarImageProvider(currentUser.avatar),
+                        child: (currentUser.avatar == null ||
+                            (!isValidImageUrl(currentUser.avatar!) &&
+                                !AvatarService.isValidAvatarPath(currentUser.avatar!)))
+                            ? Text(
+                          currentUser.name
+                              .split(' ')
+                              .where((part) => part.isNotEmpty)
+                              .map((part) => part[0])
+                              .take(2)
+                              .join()
+                              .toUpperCase(),
+                          style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor), // 主题色文字
+                        )
+                            : null,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       currentUser.name,
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87, // 深色文字
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       currentUser.email,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey.shade600,
-                          ),
+                        color: Colors.black54, // 深色文字
+                      ),
                     ),
                   ],
                 ),
               ),
-          const SizedBox(height: 32),
+              const SizedBox(height: 32),
 
-          // Property Info
-          Card(
-            elevation: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    appProvider.getLocalizedText('property_information'),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildInfoRow(context, Icons.home, appProvider.getLocalizedText('address'), currentUser.propertySimpleAddress),
-                  _buildInfoRow(context, Icons.phone, appProvider.getLocalizedText('phone'), currentUser.phoneNumber ?? 'Not set'),
-                ],
+              // Property Info (Glass Card)
+              GlassContainer(
+                color: Colors.grey.shade50, // 在白色背景上使用极淡的灰色以显示玻璃效果
+                opacity: 0.8,
+                borderRadius: BorderRadius.circular(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      appProvider.getLocalizedText('property_information'),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87, // 深色文字
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInfoRow(context, Icons.home, appProvider.getLocalizedText('address'), currentUser.propertySimpleAddress),
+                    _buildInfoRow(context, Icons.phone, appProvider.getLocalizedText('phone'), currentUser.phoneNumber ?? 'Not set'),
+                  ],
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-          // Menu Options
-          Card(
-            elevation: 0,
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.edit_outlined),
-                  title: Text(appProvider.getLocalizedText('edit_profile')),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.pushNamed(context, AppRoutes.editProfile);
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.lock_outlined),
-                  title: Text(appProvider.getLocalizedText('change_password')),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    // Navigate to the change password screen (uses FirebaseAuth)
-                    Navigator.pushNamed(context, AppRoutes.changePassword);
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.language_outlined),
-                  title: Text(appProvider.getLocalizedText('language')),
-                  subtitle: Text(_getLanguageName(context.locale.languageCode)),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    _showLanguageDialog(context);
-                  },
-                ),
-                
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+              // Menu Options (Glass Card)
+              GlassContainer(
+                color: Colors.grey.shade50, // 在白色背景上使用极淡的灰色
+                opacity: 0.8,
+                borderRadius: BorderRadius.circular(20),
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    _buildGlassListTile(
+                      context,
+                      icon: Icons.edit_outlined,
+                      title: appProvider.getLocalizedText('edit_profile'),
+                      onTap: () => Navigator.pushNamed(context, AppRoutes.editProfile),
+                    ),
+                    Divider(height: 1, color: Colors.grey.shade200),
 
-          // About
-          Card(
-            elevation: 0,
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.help_outline),
-                  title: Text(appProvider.getLocalizedText('help_support')),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.pushNamed(context, AppRoutes.helpSupport);
-                  },
+                    _buildGlassListTile(
+                      context,
+                      icon: Icons.lock_outlined,
+                      title: appProvider.getLocalizedText('change_password'),
+                      onTap: () => Navigator.pushNamed(context, AppRoutes.changePassword),
+                    ),
+                    Divider(height: 1, color: Colors.grey.shade200),
+
+                    _buildGlassListTile(
+                      context,
+                      icon: Icons.language_outlined,
+                      title: appProvider.getLocalizedText('language'),
+                      subtitle: _getLanguageName(context.locale.languageCode),
+                      onTap: () => _showLanguageDialog(context),
+                    ),
+                    Divider(height: 1, color: Colors.grey.shade200),
+
+                    // Payment Methods 入口
+                    _buildGlassListTile(
+                      context,
+                      icon: Icons.credit_card,
+                      title: 'Payment Methods',
+                      onTap: () {
+                        Navigator.pushNamed(context, AppRoutes.managePaymentMethods);
+                      },
+                    ),
+                  ],
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.info_outline),
-                  title: Text(appProvider.getLocalizedText('about')),
-                  subtitle: const Text('Version 1.0.0'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.pushNamed(context, AppRoutes.about);
-                  },
+              ),
+              const SizedBox(height: 16),
+
+              // About (Glass Card)
+              GlassContainer(
+                color: Colors.grey.shade50, // 在白色背景上使用极淡的灰色
+                opacity: 0.8,
+                borderRadius: BorderRadius.circular(20),
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    _buildGlassListTile(
+                      context,
+                      icon: Icons.help_outline,
+                      title: appProvider.getLocalizedText('help_support'),
+                      onTap: () => Navigator.pushNamed(context, AppRoutes.helpSupport),
+                    ),
+                    Divider(height: 1, color: Colors.grey.shade200),
+                    _buildGlassListTile(
+                      context,
+                      icon: Icons.info_outline,
+                      title: appProvider.getLocalizedText('about'),
+                      subtitle: 'Version 1.0.0',
+                      onTap: () => Navigator.pushNamed(context, AppRoutes.about),
+                    ),
+                  ],
                 ),
-                
-              ],
-            ),
+              ),
+              const SizedBox(height: 40),
+            ],
           ),
-        ],
-      ),
-    );
+        );
       },
     );
-  }
-
-  Widget _buildInfoRow(BuildContext context, IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Colors.grey.shade600),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey.shade600,
-                      ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _getLanguageName(String code) {
-    switch (code) {
-      case 'zh':
-        return '中文';
-      case 'ms':
-        return 'Bahasa Melayu';
-      default:
-        return 'English';
-    }
   }
 
   void _showLanguageDialog(BuildContext context) {
@@ -1118,5 +1163,20 @@ class _ProfilePage extends StatelessWidget {
         );
       },
     );
+  }
+
+  // 放在 _ProfilePage 类内部的底部
+
+  String _getLanguageName(String code) {
+    switch (code) {
+      case 'en':
+        return 'English';
+      case 'zh':
+        return '中文';
+      case 'ms':
+        return 'Bahasa Melayu';
+      default:
+        return code;
+    }
   }
 }
