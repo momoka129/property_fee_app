@@ -65,6 +65,8 @@ dependencies:
   cloud_firestore: ^6.0.3
   firebase_auth: ^6.1.1
   firebase_database: ^12.1.1
+  flutter_stripe: ^12.1.1
+
 
 
 dev_dependencies:
