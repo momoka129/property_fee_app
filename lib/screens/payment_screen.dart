@@ -285,7 +285,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         child: GlassContainer(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           opacity: 0.9, // 底部背景稍微实一点，看得清按钮
-          color: Colors.white,
           padding: const EdgeInsets.all(20),
           child: SafeArea(
             child: SizedBox(
@@ -328,7 +327,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   // 1. Add Card 按钮 (玻璃风格)
   Widget _buildAddCardButton(BuildContext context) {
     return GlassContainer(
-      color: Colors.white,
       opacity: 0.15,
       borderRadius: BorderRadius.circular(16),
       onTap: () {
@@ -366,8 +364,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: GlassContainer(
-        // 选中时变亮一点，未选中时暗一点
-        color: isSelected ? Colors.white : Colors.white.withOpacity(0.5),
         opacity: isSelected ? 0.25 : 0.1,
         borderRadius: BorderRadius.circular(16),
         // 选中时添加绿色边框
