@@ -2,13 +2,11 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
-import 'dart:io';
 
 import '../../models/user_model.dart';
 import '../../routes.dart';
 import '../../providers/app_provider.dart';
 import '../../services/avatar_service.dart';
-import '../../utils/url_utils.dart';
 import '../../widgets/glass_container.dart';
 import '../../data/mock_data.dart'; // 需要引入 MockData
 
@@ -19,15 +17,9 @@ class ProfileTab extends StatelessWidget {
 
   const ProfileTab({super.key, required this.user, required this.appProvider});
 
-  ImageProvider? _getAvatarImageProvider(String? avatarPath) {
-    if (avatarPath != null && avatarPath.isNotEmpty) {
-      if (avatarPath.startsWith('/')) {
-        if (AvatarService.isValidAvatarPath(avatarPath)) {
-          return FileImage(File(avatarPath));
-        }
-      } else if (isValidImageUrl(avatarPath)) {
-        return CachedNetworkImageProvider(avatarPath);
-      }
+  ImageProvider? _getAvatarImageProvider(String? avatarUrl) {
+    if (avatarUrl != null && AvatarService.isValidAvatarUrl(avatarUrl)) {
+      return CachedNetworkImageProvider(avatarUrl);
     }
     return null;
   }
@@ -172,8 +164,7 @@ class ProfileTab extends StatelessWidget {
                             backgroundColor: primaryColor.withOpacity(0.1),
                             backgroundImage: _getAvatarImageProvider(currentUser.avatar),
                             child: (currentUser.avatar == null ||
-                                (!isValidImageUrl(currentUser.avatar!) &&
-                                    !AvatarService.isValidAvatarPath(currentUser.avatar!)))
+                                !AvatarService.isValidAvatarUrl(currentUser.avatar!))
                                 ? Text(
                               currentUser.name
                                   .split(' ')

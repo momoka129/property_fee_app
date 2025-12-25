@@ -418,6 +418,11 @@ class FirestoreService {
     await _db.collection('accounts').doc(userId).update(data);
   }
 
+  /// Update user avatar
+  static Future<void> updateUserAvatar(String userId, String avatarUrl) async {
+    await updateUser(userId, {'avatar': avatarUrl});
+  }
+
   /// Create a new user (admin)
   static Future<String> createUser(Map<String, dynamic> data) async {
     final docRef = _db.collection('accounts').doc();

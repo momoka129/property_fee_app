@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:io';
 import '../data/mock_data.dart';
 import '../providers/app_provider.dart';
 import '../services/firestore_service.dart';
 import '../services/avatar_service.dart';
-import '../utils/url_utils.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -19,7 +17,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _propertyAddressController;
-  String? _selectedAvatarPath;
+  String? _selectedAvatarUrl;
 
   @override
   void initState() {
@@ -28,7 +26,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController = TextEditingController(text: user.name);
     _phoneController = TextEditingController(text: user.phoneNumber ?? '');
     _propertyAddressController = TextEditingController(text: user.propertySimpleAddress);
-    _selectedAvatarPath = user.avatar;
+    _selectedAvatarUrl = user.avatar;
   }
 
   @override
@@ -40,39 +38,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   ImageProvider? _getAvatarImageProvider() {
-    if (_selectedAvatarPath != null && _isValidAvatarPath(_selectedAvatarPath!)) {
-      // 如果是本地文件路径
-      if (_selectedAvatarPath!.startsWith('/')) {
-        return FileImage(File(_selectedAvatarPath!));
-      }
-      // 如果是网络URL
-      else if (isValidImageUrl(_selectedAvatarPath!)) {
-        return NetworkImage(_selectedAvatarPath!);
-      }
+    if (_selectedAvatarUrl != null && AvatarService.isValidAvatarUrl(_selectedAvatarUrl!)) {
+      return NetworkImage(_selectedAvatarUrl!);
     }
     return null;
   }
 
-  bool _isValidAvatarPath(String path) {
-    if (path.startsWith('/')) {
-      return AvatarService.isValidAvatarPath(path);
-    } else {
-      return isValidImageUrl(path);
-    }
+  bool _isValidAvatarUrl(String url) {
+    return AvatarService.isValidAvatarUrl(url);
   }
 
   Future<void> _changePhoto() async {
     final user = MockData.currentUser!;
-    final avatarPath = await AvatarService.pickAndSaveAvatar(context, user.id);
+    final avatarUrl = await AvatarService.pickAndUploadAvatar(context, user.id);
 
-    if (avatarPath != null) {
+    if (avatarUrl != null) {
+      // 更新本地用户数据
+      final updatedUser = user.copyWith(avatar: avatarUrl);
+      MockData.currentUser = updatedUser;
+
       setState(() {
-        _selectedAvatarPath = avatarPath;
+        _selectedAvatarUrl = avatarUrl;
       });
+
+      // 更新用户头像到Firestore
+      await FirestoreService.updateUserAvatar(user.id, avatarUrl);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('头像已更新'),
+          content: Text('Avatar updated'),
           backgroundColor: Colors.green,
         ),
       );
@@ -89,7 +83,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ? null
                 : _phoneController.text.trim(),
             propertySimpleAddress: _propertyAddressController.text.trim(),
-            avatar: _selectedAvatarPath,
+            avatar: _selectedAvatarUrl,
           );
 
           // 更新Firebase数据库
@@ -126,7 +120,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = MockData.currentUser!;
-    final appProvider = context.watch<AppProvider>();
 
     return Scaffold(
       appBar: AppBar(
@@ -153,7 +146,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   CircleAvatar(
                     radius: 50,
                     backgroundImage: _getAvatarImageProvider(),
-                    child: _selectedAvatarPath == null || !_isValidAvatarPath(_selectedAvatarPath!)
+                    child: _selectedAvatarUrl == null || !_isValidAvatarUrl(_selectedAvatarUrl!)
                         ? Text(
                             // Guard against empty name to avoid RangeError when accessing [0]
                             (user.name.isNotEmpty ? user.name[0].toUpperCase() : '?'),

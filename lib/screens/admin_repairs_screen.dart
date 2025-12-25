@@ -230,10 +230,10 @@ class _AdminRepairsScreenState extends State<AdminRepairsScreen> {
     }
 
     // ====== 工人/时间信息展示（按你的 RepairModel 字段实际情况调整命名）======
-    // 常见字段命名示例：assignedWorkerName / scheduledDate / completedAt
-    final String? workerName = (repair as dynamic).assignedWorkerName as String?;
-    final DateTime? scheduledDate = (repair as dynamic).scheduledDate as DateTime?;
-    final DateTime? completedAt = (repair as dynamic).completedAt as DateTime?;
+    // RepairModel 中实际使用的字段：workerName / scheduledDate / completedAt
+    final String? workerName = repair.workerName;
+    final DateTime? scheduledDate = repair.scheduledDate;
+    final DateTime? completedAt = repair.completedAt;
     // =============================================================
 
     return Container(

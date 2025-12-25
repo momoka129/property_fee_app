@@ -1,8 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
+import 'package:firebase_storage/firebase_storage.dart';
 
 class AvatarService {
   static final ImagePicker _picker = ImagePicker();
@@ -40,8 +39,8 @@ class AvatarService {
     );
   }
 
-  /// 选择并保存头像图片
-  static Future<String?> pickAndSaveAvatar(BuildContext context, String userId) async {
+  /// 选择并上传头像图片到Firebase Storage
+  static Future<String?> pickAndUploadAvatar(BuildContext context, String userId) async {
     try {
       // 选择图片来源
       final ImageSource? source = await _selectImageSource(context);
@@ -57,33 +56,78 @@ class AvatarService {
 
       if (image == null) return null;
 
-      // 获取应用文档目录
-      final Directory appDir = await getApplicationDocumentsDirectory();
-
-      // 创建avatars子目录
-      final Directory avatarsDir = Directory(path.join(appDir.path, 'avatars'));
-      if (!await avatarsDir.exists()) {
-        await avatarsDir.create(recursive: true);
+      // 显示上传进度
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Uploading avatar...')),
+        );
       }
 
-      // 生成文件名：user_{userId}_{timestamp}.jpg
+      // 生成文件名：avatars/user_{userId}_{timestamp}.jpg
       final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
       final String fileName = 'user_${userId}_$timestamp.jpg';
-      final String filePath = path.join(avatarsDir.path, fileName);
+      final String storagePath = 'avatars/$fileName';
 
-      // 复制图片到目标位置
-      await File(image.path).copy(filePath);
+      // 上传到Firebase Storage
+      final Reference storageRef = FirebaseStorage.instance.ref().child(storagePath);
+      final UploadTask uploadTask = storageRef.putFile(
+        File(image.path),
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
 
-      return filePath;
+      // 等待上传完成
+      final TaskSnapshot snapshot = await uploadTask;
+
+      // 获取下载URL
+      final String downloadUrl = await snapshot.ref.getDownloadURL();
+
+      // 显示成功消息
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Avatar uploaded')),
+        );
+      }
+
+      return downloadUrl;
     } catch (e) {
-      debugPrint('Error picking/saving avatar: $e');
+      debugPrint('Error uploading avatar: $e');
+
+      // 显示错误消息
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Avatar upload failed: ${e.toString()}')),
+        );
+      }
+
       return null;
     }
   }
 
-  /// 验证图片文件是否存在
+  /// 选择并保存头像图片到本地（向后兼容）
+  @deprecated
+  static Future<String?> pickAndSaveAvatar(BuildContext context, String userId) async {
+    return await pickAndUploadAvatar(context, userId);
+  }
+
+  /// 验证头像URL是否有效
+  static bool isValidAvatarUrl(String? avatarUrl) {
+    if (avatarUrl == null || avatarUrl.isEmpty) return false;
+
+    // 检查是否是Firebase Storage URL或网络URL
+    return avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://');
+  }
+
+  /// 验证图片文件是否存在（本地文件，向后兼容）
+  @deprecated
   static bool isValidAvatarPath(String? avatarPath) {
     if (avatarPath == null || avatarPath.isEmpty) return false;
-    return File(avatarPath).existsSync();
+
+    // 如果是本地文件路径，检查文件是否存在
+    if (!avatarPath.startsWith('http')) {
+      return File(avatarPath).existsSync();
+    }
+
+    // 如果是网络URL，直接认为是有效的
+    return true;
   }
 }

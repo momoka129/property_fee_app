@@ -555,7 +555,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       {'icon': Icons.handyman_rounded, 'label': 'Repairs', 'route': AppRoutes.adminRepairs, 'color': const Color(0xFFF59E0B)},
       {'icon': Icons.inventory_2_rounded, 'label': 'Parcels', 'route': AppRoutes.adminPackages, 'color': const Color(0xFF10B981)},
       {'icon': Icons.campaign_rounded, 'label': 'News', 'route': AppRoutes.adminAnnouncements, 'color': const Color(0xFFEC4899)},
-      {'icon': Icons.local_parking_rounded, 'label': 'Parking', 'route': AppRoutes.adminParking, 'color': const Color(0xFF3B82F6)},
+      // Parking feature removed from project - action intentionally omitted
       {'icon': Icons.people_rounded, 'label': 'Users', 'route': AppRoutes.adminHome, 'color': const Color(0xFF8B5CF6)},
     ];
 
