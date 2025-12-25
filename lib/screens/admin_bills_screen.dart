@@ -73,21 +73,6 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
           ),
           Row(
             children: [
-              PopupMenuButton<String>(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: kCardShadow),
-                  child: const Icon(Icons.more_horiz, color: Colors.black87),
-                ),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                onSelected: (value) {
-                  if (value == 'migrate') _showUserMigrationDialog(context);
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(value: 'migrate', child: Row(children: [Icon(Icons.move_up, size: 18, color: Colors.orange), SizedBox(width: 8), Text('Migrate Data')])),
-                ],
-              ),
-              const SizedBox(width: 12),
               InkWell(
                 onTap: () => _showEditDialog(context),
                 borderRadius: BorderRadius.circular(12),
