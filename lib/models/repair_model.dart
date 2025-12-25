@@ -2,14 +2,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RepairModel {
   final String id;
-  final String userId; // ID of the user who submitted the repair request
+  final String userId;
   final String title;
   final String description;
-  final String location; // 'Kitchen', 'Bedroom', 'Bathroom', 'Main Door', 'Living Room'
-  final String priority; // 'low', 'medium', 'high'
-  final String status; // 'pending', 'in_progress', 'completed'
+  final String location;
+  final String priority;
+
+  // 状态增加: 'canceled', 'rejected'
+  final String status; // 'pending', 'in_progress', 'completed', 'canceled', 'rejected'
+
   final DateTime createdAt;
   final DateTime? completedAt;
+
+  // 新增字段
+  final String? rejectionReason; // 拒绝理由
+  final String? workerName;      // 分配的工人名字
+  final DateTime? scheduledDate; // 预约维修时间
 
   RepairModel({
     required this.id,
@@ -21,9 +29,11 @@ class RepairModel {
     this.status = 'pending',
     required this.createdAt,
     this.completedAt,
+    this.rejectionReason,
+    this.workerName,
+    this.scheduledDate,
   });
 
-  // Factory constructor to create RepairModel from Firestore document
   factory RepairModel.fromMap(Map<String, dynamic> map, String documentId) {
     return RepairModel(
       id: documentId,
@@ -39,10 +49,14 @@ class RepairModel {
       completedAt: map['completedAt'] is DateTime
           ? map['completedAt']
           : (map['completedAt'] as Timestamp?)?.toDate(),
+      rejectionReason: map['rejectionReason'],
+      workerName: map['workerName'],
+      scheduledDate: map['scheduledDate'] is DateTime
+          ? map['scheduledDate']
+          : (map['scheduledDate'] as Timestamp?)?.toDate(),
     );
   }
 
-  // Convert RepairModel to Map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
@@ -53,44 +67,31 @@ class RepairModel {
       'status': status,
       'createdAt': Timestamp.fromDate(createdAt),
       'completedAt': completedAt != null ? Timestamp.fromDate(completedAt!) : null,
+      'rejectionReason': rejectionReason,
+      'workerName': workerName,
+      'scheduledDate': scheduledDate != null ? Timestamp.fromDate(scheduledDate!) : null,
     };
   }
 
   String get statusDisplay {
     switch (status) {
-      case 'pending':
-        return 'Pending';
-      case 'in_progress':
-        return 'In Progress';
-      case 'completed':
-        return 'Completed';
-      default:
-        return status;
+      case 'pending': return 'Pending';
+      case 'in_progress': return 'In Progress';
+      case 'completed': return 'Completed';
+      case 'canceled': return 'Canceled';
+      case 'rejected': return 'Rejected';
+      default: return status;
     }
   }
 
-  String get locationDisplay {
-    return location;
-  }
-
+  // 省略 locationDisplay 和 priorityDisplay，保持原样即可
+  String get locationDisplay => location;
   String get priorityDisplay {
     switch (priority) {
-      case 'low':
-        return 'Low';
-      case 'medium':
-        return 'Medium';
-      case 'high':
-        return 'High';
-      default:
-        return priority;
+      case 'low': return 'Low';
+      case 'medium': return 'Medium';
+      case 'high': return 'High';
+      default: return priority;
     }
   }
 }
-
-
-
-
-
-
-
-

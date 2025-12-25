@@ -703,6 +703,128 @@ class FirestoreService {
 
     return packageRef.id;
   }
+
+  // --- 新增/修改 Repair 相关方法 ---
+
+  /// 管理员：拒绝维修申请
+  static Future<void> rejectRepair(String repairId, String userId, String reason) async {
+    final batch = _db.batch();
+
+    // 1. 更新维修状态
+    final repairRef = _db.collection('repairs').doc(repairId);
+    batch.update(repairRef, {
+      'status': 'rejected',
+      'rejectionReason': reason,
+      'completedAt': Timestamp.now(), // 视为结束
+    });
+
+    // 2. 发送通知给用户
+    final notifRef = _db.collection('notifications').doc();
+    batch.set(notifRef, {
+      'userId': userId,
+      'title': 'Request Rejected',
+      'message': 'Your maintenance request was rejected. Reason: $reason',
+      'type': 'repair_update',
+      'relatedId': repairId,
+      'isRead': false,
+      'createdAt': Timestamp.now(),
+    });
+
+    await batch.commit();
+  }
+
+  /// 管理员：分配工人并开启维修 (变为 in_progress)
+  static Future<void> assignRepair(String repairId, String userId, String workerName, DateTime scheduledDate) async {
+    final batch = _db.batch();
+
+    // 1. 更新维修信息
+    final repairRef = _db.collection('repairs').doc(repairId);
+    batch.update(repairRef, {
+      'status': 'in_progress',
+      'workerName': workerName,
+      'scheduledDate': Timestamp.fromDate(scheduledDate),
+    });
+
+    // 2. 发送通知给用户
+    final notifRef = _db.collection('notifications').doc();
+    // 格式化日期显示
+    final dateStr = "${scheduledDate.year}-${scheduledDate.month}-${scheduledDate.day}";
+    batch.set(notifRef, {
+      'userId': userId,
+      'title': 'Worker Assigned',
+      'message': 'Worker $workerName has been assigned. Scheduled for $dateStr.',
+      'type': 'repair_update',
+      'relatedId': repairId,
+      'isRead': false,
+      'createdAt': Timestamp.now(),
+    });
+
+    await batch.commit();
+  }
+
+  /// 用户/系统：取消维修申请
+  static Future<void> cancelRepair(String repairId, {String? userId, bool isAuto = false}) async {
+    // 如果是自动取消，需要 userId 来发通知
+    final batch = _db.batch();
+    final repairRef = _db.collection('repairs').doc(repairId);
+
+    batch.update(repairRef, {
+      'status': 'canceled',
+      'completedAt': Timestamp.now(), // 视为结束
+    });
+
+    if (isAuto && userId != null) {
+      final notifRef = _db.collection('notifications').doc();
+      batch.set(notifRef, {
+        'userId': userId,
+        'title': 'Request Auto-Canceled',
+        'message': 'Your request was automatically canceled as it was not processed within 5 days.',
+        'type': 'repair_update',
+        'relatedId': repairId,
+        'isRead': false,
+        'createdAt': Timestamp.now(),
+      });
+    }
+
+    await batch.commit();
+  }
+
+  /// 用户：确认维修完成 (必须在 in_progress 状态下)
+  static Future<void> completeRepairByUser(String repairId) async {
+    await _db.collection('repairs').doc(repairId).update({
+      'status': 'completed',
+      'completedAt': Timestamp.now(),
+    });
+  }
+
+  /// 系统：检查自动取消 (超过5天未开启的 Pending 任务)
+  /// 建议在 AdminRepairsScreen 初始化时调用
+  static Future<void> checkAutoCancelRepairs() async {
+    final now = DateTime.now();
+    final fiveDaysAgo = now.subtract(const Duration(days: 5));
+
+    final query = await _db.collection('repairs')
+        .where('status', isEqualTo: 'pending')
+        .where('createdAt', isLessThan: Timestamp.fromDate(fiveDaysAgo))
+        .get();
+
+    for (var doc in query.docs) {
+      final data = doc.data();
+      final userId = data['userId'];
+      // 执行自动取消
+      await cancelRepair(doc.id, userId: userId, isAuto: true);
+    }
+  }
+
+  /// 获取所有工人 (Role = 'worker')
+  /// 假设你在 User 管理中添加了 'worker' 角色
+  static Future<List<UserModel>> getWorkers() async {
+    final snapshot = await _db.collection('accounts')
+        .where('role', isEqualTo: 'worker')
+        .get();
+    return snapshot.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList();
+  }
+
 }
 
 

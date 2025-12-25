@@ -4,6 +4,9 @@ import '../models/repair_model.dart';
 import '../services/firestore_service.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../widgets/classical_dialog.dart';
+import '../widgets/glass_container.dart';
+
 
 class RepairsScreen extends StatefulWidget {
   const RepairsScreen({super.key});
@@ -232,6 +235,55 @@ class _RepairsScreenState extends State<RepairsScreen> {
                       ),
                     ],
                   ),
+
+
+// 1. 展示额外信息 (Worker/Reason)
+                  if (repair.status == 'rejected' && repair.rejectionReason != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8)),
+                      child: Text("Reason: ${repair.rejectionReason}", style: const TextStyle(color: Colors.red)),
+                    ),
+
+                  if (repair.status == 'in_progress' && repair.workerName != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(8)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Worker: ${repair.workerName}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                          if (repair.scheduledDate != null)
+                            Text("Scheduled: ${DateFormat('yyyy-MM-dd').format(repair.scheduledDate!)}", style: const TextStyle(color: Colors.blue)),
+                        ],
+                      ),
+                    ),
+
+// 2. 底部操作按钮栏
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      // 逻辑：Pending 状态可以取消
+                      if (repair.status == 'pending')
+                        OutlinedButton(
+                          onPressed: () => _confirmCancel(context, repair),
+                          style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                          child: const Text('Cancel Request'),
+                        ),
+
+                      // 逻辑：In Progress 状态可以确认完成
+                      if (repair.status == 'in_progress')
+                        FilledButton.icon(
+                          onPressed: () => _confirmComplete(context, repair),
+                          icon: const Icon(Icons.check, size: 16),
+                          label: const Text('Confirm Complete'),
+                          style: FilledButton.styleFrom(backgroundColor: Colors.green),
+                        ),
+                    ],
+                  )
                 ],
               ),
             ),
@@ -324,122 +376,247 @@ class _RepairsScreenState extends State<RepairsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('New Repair Request'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Title *',
-                    border: OutlineInputBorder(),
-                    hintText: 'e.g., Leaking Faucet',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description *',
-                    border: OutlineInputBorder(),
-                    hintText: 'Describe the problem in detail',
-                  ),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: selectedLocation,
-                  decoration: const InputDecoration(
-                    labelText: 'Location *',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'Kitchen', child: Text('Kitchen')),
-                    DropdownMenuItem(value: 'Bedroom', child: Text('Bedroom')),
-                    DropdownMenuItem(value: 'Bathroom', child: Text('Bathroom')),
-                    DropdownMenuItem(value: 'Main Door', child: Text('Main Door')),
-                    DropdownMenuItem(value: 'Living Room', child: Text('Living Room')),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      selectedLocation = value!;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: selectedPriority,
-                  decoration: const InputDecoration(
-                    labelText: 'Priority',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'low', child: Text('Low')),
-                    DropdownMenuItem(value: 'medium', child: Text('Medium')),
-                    DropdownMenuItem(value: 'high', child: Text('High')),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      selectedPriority = value!;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                if (titleController.text.isEmpty || descriptionController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please fill in all required fields')),
-                  );
-                  return;
-                }
-
-                try {
-                  // 创建新的报修记录
-                  final repairData = {
-                    'title': titleController.text,
-                    'description': descriptionController.text,
-                    'location': selectedLocation,
-                    'priority': selectedPriority,
-                    'status': 'pending',
-                    'createdAt': DateTime.now(),
-                  };
-
-                  await FirestoreService.createRepair({
-                    ...repairData,
-                    'userId': currentUser.id,
-                  });
-
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Repair request submitted successfully'),
-                      backgroundColor: Colors.green,
+      barrierColor: Colors.black.withOpacity(0.3), // 背景遮罩稍微深一点，突出玻璃效果
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent, // 关键：让 Dialog 本身透明
+        elevation: 0,
+        insetPadding: const EdgeInsets.all(20), // 调整弹窗与屏幕边缘的距离
+        child: StatefulBuilder(
+          builder: (context, setState) {
+            return GlassContainer(
+              borderRadius: BorderRadius.circular(24),
+              opacity: 0.85, // 稍微提高一点不透明度，确保表单文字清晰可见
+              blur: 20,      // 磨砂程度
+              padding: const EdgeInsets.all(24), // 内部内边距
+              child: SingleChildScrollView(
+                // 使用 SingleChildScrollView 防止键盘弹出时溢出
+                child: Column(
+                  mainAxisSize: MainAxisSize.min, // 包裹内容高度
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // --- 1. 标题区域 ---
+                    const Center(
+                      child: Text(
+                        'New Repair Request',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
                     ),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Failed to submit repair request: $e'),
-                      backgroundColor: Colors.red,
+                    const SizedBox(height: 24),
+
+                    // --- 2. 表单区域 ---
+                    // Title Input
+                    TextField(
+                      controller: titleController,
+                      decoration: InputDecoration(
+                        labelText: 'Title *',
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.5), // 输入框半透明背景
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        hintText: 'e.g., Leaking Faucet',
+                      ),
                     ),
-                  );
-                }
-              },
-              child: const Text('Submit'),
-            ),
-          ],
+                    const SizedBox(height: 16),
+
+                    // Description Input
+                    TextField(
+                      controller: descriptionController,
+                      decoration: InputDecoration(
+                        labelText: 'Description *',
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        hintText: 'Describe the problem in detail',
+                      ),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Location Dropdown
+                    DropdownButtonFormField<String>(
+                      value: selectedLocation,
+                      decoration: InputDecoration(
+                        labelText: 'Location *',
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                      dropdownColor: Colors.white, // 确保下拉菜单背景是纯白，防止看不清
+                      items: const [
+                        DropdownMenuItem(value: 'Kitchen', child: Text('Kitchen')),
+                        DropdownMenuItem(value: 'Bedroom', child: Text('Bedroom')),
+                        DropdownMenuItem(value: 'Bathroom', child: Text('Bathroom')),
+                        DropdownMenuItem(value: 'Main Door', child: Text('Main Door')),
+                        DropdownMenuItem(value: 'Living Room', child: Text('Living Room')),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedLocation = value!;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Priority Dropdown
+                    DropdownButtonFormField<String>(
+                      value: selectedPriority,
+                      decoration: InputDecoration(
+                        labelText: 'Priority',
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                      dropdownColor: Colors.white,
+                      items: const [
+                        DropdownMenuItem(value: 'low', child: Text('Low')),
+                        DropdownMenuItem(value: 'medium', child: Text('Medium')),
+                        DropdownMenuItem(value: 'high', child: Text('High')),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedPriority = value!;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 30),
+
+                    // --- 3. 按钮区域 ---
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        // Cancel Button
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.black54,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          ),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 8),
+
+                        // Submit Button
+                        FilledButton(
+                          onPressed: () async {
+                            if (titleController.text.isEmpty || descriptionController.text.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Please fill in all required fields')),
+                              );
+                              return;
+                            }
+
+                            try {
+                              // 创建新的报修记录
+                              final repairData = {
+                                'title': titleController.text,
+                                'description': descriptionController.text,
+                                'location': selectedLocation,
+                                'priority': selectedPriority,
+                                'status': 'pending',
+                                'createdAt': DateTime.now(),
+                              };
+
+                              await FirestoreService.createRepair({
+                                ...repairData,
+                                'userId': currentUser.id,
+                              });
+
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Repair request submitted successfully'),
+                                    backgroundColor: Colors.green,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Failed to submit repair request: $e'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.black87, // 或者使用你的主题色
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            elevation: 0,
+                          ),
+                          child: const Text('Submit'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
+      ),
+    );
+  }
+
+  // --- Helper Methods to add in _RepairsScreenState ---
+
+  void _confirmCancel(BuildContext context, RepairModel repair) {
+    showDialog(
+      context: context,
+      builder: (context) => ClassicalDialog(
+        title: 'Cancel Request?',
+        content: 'Are you sure you want to cancel this request?',
+        cancelText: 'No',           // 对应 AlertDialog 的第一个按钮
+        confirmText: 'Cancel', // 对应 AlertDialog 的第二个按钮
+        onConfirm: () {
+          // 这里的逻辑保持不变
+          FirestoreService.cancelRepair(repair.id);
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
+  void _confirmComplete(BuildContext context, RepairModel repair) {
+    showDialog(
+      context: context,
+      builder: (context) => ClassicalDialog(
+        title: 'Confirm Completion',
+        content: 'Has the repair been completed satisfactorily?',
+        cancelText: 'No',
+        confirmText: 'Yes',
+        onConfirm: () {
+          // 这里的逻辑保持不变
+          FirestoreService.completeRepairByUser(repair.id);
+          Navigator.pop(context);
+        },
       ),
     );
   }

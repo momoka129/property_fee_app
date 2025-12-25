@@ -25,6 +25,13 @@ class _AdminRepairsScreenState extends State<AdminRepairsScreen> {
     ),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    // 检查是否有超时需要取消的订单（维修请求）
+    FirestoreService.checkAutoCancelRepairs();
+  }
+
   Future<void> _updateRepairStatus(String repairId, String newStatus) async {
     try {
       DateTime? completedAt;
@@ -49,6 +56,31 @@ class _AdminRepairsScreenState extends State<AdminRepairsScreen> {
           SnackBar(content: Text('Update failed: $e'), backgroundColor: Colors.red),
         );
       }
+    }
+  }
+
+  Future<void> _forceCompleteRepair(RepairModel repair) async {
+    try {
+      await FirestoreService.updateRepairStatus(
+        repair.id,
+        'completed',
+        completedAt: DateTime.now(),
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Marked as completed'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Update failed: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 
@@ -140,9 +172,7 @@ class _AdminRepairsScreenState extends State<AdminRepairsScreen> {
           future: FirestoreService.getUsers(),
           builder: (context, usersSnapshot) {
             final users = usersSnapshot.data ?? [];
-            final Map<String, UserModel> userById = {
-              for (var u in users) u.id: u
-            };
+            final Map<String, UserModel> userById = {for (var u in users) u.id: u};
 
             return ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -198,6 +228,13 @@ class _AdminRepairsScreenState extends State<AdminRepairsScreen> {
       default:
         priorityColor = const Color(0xFF10B981); // Green
     }
+
+    // ====== 工人/时间信息展示（按你的 RepairModel 字段实际情况调整命名）======
+    // 常见字段命名示例：assignedWorkerName / scheduledDate / completedAt
+    final String? workerName = (repair as dynamic).assignedWorkerName as String?;
+    final DateTime? scheduledDate = (repair as dynamic).scheduledDate as DateTime?;
+    final DateTime? completedAt = (repair as dynamic).completedAt as DateTime?;
+    // =============================================================
 
     return Container(
       decoration: BoxDecoration(
@@ -267,9 +304,23 @@ class _AdminRepairsScreenState extends State<AdminRepairsScreen> {
 
                       // 时间信息
                       _buildInfoRow(
-                          Icons.calendar_today_outlined,
-                          "Created: ${DateFormat('MMM dd, yyyy').format(repair.createdAt)}"
+                        Icons.calendar_today_outlined,
+                        "Created: ${DateFormat('MMM dd, yyyy').format(repair.createdAt)}",
                       ),
+
+                      // 工人 + 预约日期（若有）
+                      if (workerName != null && workerName.trim().isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        _buildInfoRow(Icons.engineering_outlined, "Worker: $workerName"),
+                      ],
+                      if (scheduledDate != null) ...[
+                        const SizedBox(height: 6),
+                        _buildInfoRow(Icons.event_outlined, "Scheduled: ${DateFormat('yyyy-MM-dd').format(scheduledDate)}"),
+                      ],
+                      if (completedAt != null) ...[
+                        const SizedBox(height: 6),
+                        _buildInfoRow(Icons.check_circle_outline, "Completed: ${DateFormat('yyyy-MM-dd').format(completedAt)}"),
+                      ],
 
                       const SizedBox(height: 12),
                       const Divider(height: 1),
@@ -309,7 +360,7 @@ class _AdminRepairsScreenState extends State<AdminRepairsScreen> {
                             child: Padding(
                               padding: const EdgeInsets.all(4.0),
                               child: Text(
-                                "Update Status",
+                                "Manage",
                                 style: TextStyle(
                                   color: Colors.blue[600],
                                   fontWeight: FontWeight.w600,
@@ -348,59 +399,249 @@ class _AdminRepairsScreenState extends State<AdminRepairsScreen> {
     );
   }
 
-  // --- 4. 底部状态更新菜单 ---
+  // --- 4. 底部状态更新菜单（按你给的指示重写） ---
   void _showStatusUpdateSheet(BuildContext context, RepairModel repair) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true, // 允许弹窗变高
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Update Request Status",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            _buildStatusOption(
-              context,
-              title: "Pending",
-              icon: Icons.schedule,
-              color: Colors.orange,
-              isSelected: repair.status == 'pending',
-              onTap: () => _updateRepairStatus(repair.id, 'pending'),
-            ),
-            const SizedBox(height: 12),
-            _buildStatusOption(
-              context,
-              title: "In Progress",
-              icon: Icons.pending_actions,
-              color: Colors.blue,
-              isSelected: repair.status == 'in_progress',
-              onTap: () => _updateRepairStatus(repair.id, 'in_progress'),
-            ),
-            const SizedBox(height: 12),
-            _buildStatusOption(
-              context,
-              title: "Completed",
-              icon: Icons.check_circle_outline,
-              color: Colors.green,
-              isSelected: repair.status == 'completed',
-              onTap: () => _updateRepairStatus(repair.id, 'completed'),
-            ),
-            const SizedBox(height: 20),
-          ],
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Manage Request", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+
+              // 1) Pending：分配 + 拒绝
+              if (repair.status == 'pending') ...[
+                _buildStatusOption(
+                  context,
+                  title: "Assign Worker & Start",
+                  icon: Icons.engineering,
+                  color: Colors.blue,
+                  isSelected: false,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showAssignDialog(context, repair);
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildStatusOption(
+                  context,
+                  title: "Reject Request",
+                  icon: Icons.cancel_outlined,
+                  color: Colors.red,
+                  isSelected: false,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showRejectDialog(context, repair);
+                  },
+                ),
+              ]
+              // 2) In Progress：管理员可强制完成
+              else if (repair.status == 'in_progress') ...[
+                _buildStatusOption(
+                  context,
+                  title: "Mark as Completed",
+                  icon: Icons.check_circle_outline,
+                  color: Colors.green,
+                  isSelected: false,
+                  onTap: () => _forceCompleteRepair(repair),
+                ),
+              ] else ...[
+                const Text("No actions available for this status."),
+              ],
+
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
   }
 
+  // 新增：分配工人弹窗
+  void _showAssignDialog(BuildContext context, RepairModel repair) async {
+    List<dynamic> workers = [];
+    try {
+      final result = await FirestoreService.getWorkers(); // 获取工人列表
+      workers = result as List<dynamic>;
+    } catch (_) {
+      // 不阻断 UI：允许走手动输入
+      workers = [];
+    }
+
+    DateTime? selectedDate;
+    String? selectedWorkerName;
+
+    // 默认最小日期为创建日期 + 1 天
+    final firstDate = repair.createdAt.add(const Duration(days: 1));
+    final today = DateTime.now();
+    final initialDate = today.isAfter(firstDate) ? today : firstDate;
+
+    if (!context.mounted) return;
+
+    // 尽量兼容：workers 可能是 String 列表，也可能是对象列表（带 name 字段）
+    final workerNames = workers
+        .map<String>((w) {
+      if (w is String) return w;
+      final dynamic dw = w;
+      final name = dw.name?.toString();
+      return name ?? '';
+    })
+        .where((n) => n.trim().isNotEmpty)
+        .toList();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Assign Worker'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 选择日期
+                ListTile(
+                  title: Text(
+                    selectedDate == null
+                        ? 'Select Date (Required)'
+                        : DateFormat('yyyy-MM-dd').format(selectedDate!),
+                  ),
+                  leading: const Icon(Icons.calendar_today),
+                  tileColor: Colors.grey[100],
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: initialDate,
+                      firstDate: firstDate, // 必须从第二天开始
+                      lastDate: DateTime(2030),
+                    );
+                    if (date != null) {
+                      setState(() => selectedDate = date);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // 选择或输入工人
+                if (workerNames.isNotEmpty)
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'Select Worker',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: workerNames
+                        .map((name) => DropdownMenuItem(value: name, child: Text(name)))
+                        .toList(),
+                    onChanged: (val) => selectedWorkerName = val,
+                  )
+                else
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'Worker Name',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (val) => selectedWorkerName = val,
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: () async {
+                  final name = selectedWorkerName?.trim() ?? '';
+                  if (selectedDate != null && name.isNotEmpty) {
+                    try {
+                      await FirestoreService.assignRepair(
+                        repair.id,
+                        repair.userId,
+                        name,
+                        selectedDate!,
+                      );
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Assigned successfully'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Assign failed: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Assign & Start'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // 新增：拒绝理由弹窗
+  void _showRejectDialog(BuildContext context, RepairModel repair) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reject Request'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Reason',
+            hintText: 'Why is this rejected?',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              final reason = controller.text.trim();
+              if (reason.isEmpty) return;
+
+              try {
+                await FirestoreService.rejectRepair(repair.id, repair.userId, reason);
+                if (!context.mounted) return;
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Rejected successfully'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Reject failed: $e'), backgroundColor: Colors.red),
+                );
+              }
+            },
+            child: const Text('Reject'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // _buildStatusOption 保持不变
   Widget _buildStatusOption(
       BuildContext context, {
         required String title,
@@ -427,12 +668,11 @@ class _AdminRepairsScreenState extends State<AdminRepairsScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                  color: isSelected ? color : Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    if (!isSelected)
-                      BoxShadow(color: Colors.grey.withOpacity(0.2), blurRadius: 5)
-                  ]
+                color: isSelected ? color : Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  if (!isSelected) BoxShadow(color: Colors.grey.withOpacity(0.2), blurRadius: 5),
+                ],
               ),
               child: Icon(
                 icon,
@@ -450,8 +690,7 @@ class _AdminRepairsScreenState extends State<AdminRepairsScreen> {
               ),
             ),
             const Spacer(),
-            if (isSelected)
-              Icon(Icons.check, color: color),
+            if (isSelected) Icon(Icons.check, color: color),
           ],
         ),
       ),
