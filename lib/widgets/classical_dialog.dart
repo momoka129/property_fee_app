@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class ClassicalDialog extends StatefulWidget {
   final String title;
   final String content;
-  final String cancelText;
+  final String? cancelText; // 改为可空 (String?)
   final String confirmText;
   final VoidCallback? onCancel;
   final VoidCallback onConfirm;
@@ -13,7 +13,7 @@ class ClassicalDialog extends StatefulWidget {
     super.key,
     required this.title,
     required this.content,
-    this.cancelText = 'CANCEL',
+    this.cancelText, // 默认为 null，表示不显示取消按钮
     this.confirmText = 'CONFIRM',
     this.onCancel,
     required this.onConfirm,
@@ -57,7 +57,7 @@ class _ClassicalDialogState extends State<ClassicalDialog>
     // 调色板
     const Color paperColor = Color(0xFFF9F7F2); // 宣纸白
     const Color inkColor = Color(0xFF2C2C2C); // 墨色
-    // 使用当前主题的主色调（绿色）
+    // 使用当前主题的主色调
     final Color accentColor = Theme.of(context).colorScheme.primary;
     const Color borderColor = Color(0xFFD4C5A8); // 淡金边框
 
@@ -66,7 +66,7 @@ class _ClassicalDialogState extends State<ClassicalDialog>
       child: FadeTransition(
         opacity: _fadeAnimation,
         child: Dialog(
-          backgroundColor: Colors.transparent, // 关键：在这里设置透明背景
+          backgroundColor: Colors.transparent,
           elevation: 0,
           insetPadding: const EdgeInsets.symmetric(horizontal: 40),
           child: Stack(
@@ -80,7 +80,6 @@ class _ClassicalDialogState extends State<ClassicalDialog>
                 decoration: BoxDecoration(
                   color: paperColor,
                   borderRadius: BorderRadius.circular(12),
-                  // 双层边框设计：内阴影 + 外边框
                   border: Border.all(color: borderColor, width: 1.5),
                   boxShadow: [
                     BoxShadow(
@@ -136,68 +135,8 @@ class _ClassicalDialogState extends State<ClassicalDialog>
 
                     const SizedBox(height: 32),
 
-                    // 按钮区域
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // 左侧按钮 (取消/辅助操作)
-                        Expanded(
-                          child: InkWell(
-                            onTap: widget.onCancel ?? () => Navigator.of(context).pop(),
-                            borderRadius: BorderRadius.circular(6),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                    color: inkColor.withOpacity(0.3)),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                widget.cancelText,
-                                style: TextStyle(
-                                  color: inkColor.withOpacity(0.8),
-                                  fontSize: 15,
-                                  letterSpacing: 2,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        // 右侧按钮 (确认/主要操作)
-                        Expanded(
-                          child: InkWell(
-                            onTap: widget.onConfirm,
-                            borderRadius: BorderRadius.circular(6),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: accentColor,
-                                borderRadius: BorderRadius.circular(6),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: accentColor.withOpacity(0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  )
-                                ],
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                widget.confirmText,
-                                style: const TextStyle(
-                                  color: Color(0xFFF9F7F2),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 2,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    // 按钮区域 (逻辑修改：根据是否有 cancelText 决定布局)
+                    _buildButtonRow(inkColor, accentColor),
                   ],
                 ),
               ),
@@ -219,6 +158,82 @@ class _ClassicalDialogState extends State<ClassicalDialog>
           ),
         ),
       ),
+    );
+  }
+
+  // 抽离按钮构建逻辑，支持单按钮模式
+  Widget _buildButtonRow(Color inkColor, Color accentColor) {
+    // 确认按钮样式（复用）
+    Widget confirmBtn = InkWell(
+      onTap: widget.onConfirm,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: accentColor,
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: [
+            BoxShadow(
+              color: accentColor.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            )
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          widget.confirmText,
+          style: const TextStyle(
+            color: Color(0xFFF9F7F2),
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 2,
+          ),
+        ),
+      ),
+    );
+
+    // 如果没有取消文本，则显示单按钮（铺满宽度，视觉上即居中）
+    if (widget.cancelText == null || widget.cancelText!.isEmpty) {
+      return SizedBox(
+        width: double.infinity,
+        child: confirmBtn,
+      );
+    }
+
+    // 否则显示双按钮
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // 左侧取消按钮
+        Expanded(
+          child: InkWell(
+            onTap: widget.onCancel ?? () => Navigator.of(context).pop(),
+            borderRadius: BorderRadius.circular(6),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: inkColor.withOpacity(0.3)),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                widget.cancelText!,
+                style: TextStyle(
+                  color: inkColor.withOpacity(0.8),
+                  fontSize: 15,
+                  letterSpacing: 2,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        // 右侧确认按钮
+        Expanded(
+          child: confirmBtn,
+        ),
+      ],
     );
   }
 }
