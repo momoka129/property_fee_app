@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:property_fee_app/widgets/malaysia_phone_input.dart' as mp;
 import '../data/mock_data.dart';
 import '../providers/app_provider.dart';
 import '../services/firestore_service.dart';
@@ -182,15 +183,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            TextFormField(
+            // Use MalaysiaPhoneInput for consistent phone input UI (optional field)
+            mp.MalaysiaPhoneInput(
               controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Phone Number',
-                prefixIcon: Icon(Icons.phone_outlined),
-                border: OutlineInputBorder(),
-                hintText: 'Optional',
-              ),
+              label: 'Phone Number',
+              required: false,
+              // keep existing behavior: empty allowed
+              validator: (v) {
+                final txt = _phoneController.text.trim();
+                if (txt.isNotEmpty && txt.length != 9) return 'Phone must be 9 digits';
+                return null;
+              },
+              onChanged: (val) {},
             ),
             const SizedBox(height: 16),
 

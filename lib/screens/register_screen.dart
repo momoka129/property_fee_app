@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pinput/pinput.dart';
+import 'package:property_fee_app/widgets/malaysia_phone_input.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
@@ -194,80 +194,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ),
                     const SizedBox(height: 12),
-                    // Phone input with fixed '+60' prefix and 9 separate square boxes using Pinput.
-                    FormField<String>(
-                      initialValue: _phoneController.text,
-                      validator: (v) {
-                        if (_phoneController.text.isEmpty) return 'Please enter your phone';
-                        if (_phoneController.text.length != 9) return 'Phone must be 9 digits';
-                        return null;
-                      },
-                      builder: (field) {
-                        final pinTheme = PinTheme(
-                          width: 48,
-                          height: 48,
-                          textStyle: const TextStyle(fontSize: 16, color: Colors.black),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey.shade400),
-                          ),
-                        );
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.phone, size: 18),
-                                  const SizedBox(width: 8),
-                                  Text('Phone', style: Theme.of(context).textTheme.bodySmall),
-                                ],
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey.shade400),
-                                    borderRadius: BorderRadius.circular(8),
-                                    color: Colors.grey.shade100,
-                                  ),
-                                  child: const Text('+60', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Pinput(
-                                    length: 9,
-                                    controller: _phoneController,
-                                    defaultPinTheme: pinTheme,
-                                    focusedPinTheme: pinTheme.copyWith(
-                                      decoration: pinTheme.decoration!.copyWith(border: Border.all(color: Theme.of(context).primaryColor)),
-                                    ),
-                                    submittedPinTheme: pinTheme,
-                                    androidSmsAutofillMethod: AndroidSmsAutofillMethod.none,
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                    onChanged: (value) {
-                                      field.didChange(value);
-                                      // keep controller value synchronized (already handled by controller)
-                                      setState(() {});
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (field.hasError)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 6),
-                                child: Text(field.errorText ?? '', style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
-                              ),
-                          ],
-                        );
-                      },
+                    // Reusable Malaysia phone input widget (fixed '+60' prefix + 9 boxes)
+                    MalaysiaPhoneInput(
+                      controller: _phoneController,
+                      label: 'Phone',
+                      required: true,
                     ),
                     const SizedBox(height: 12),
 

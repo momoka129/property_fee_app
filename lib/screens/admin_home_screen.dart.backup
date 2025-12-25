@@ -686,7 +686,7 @@ class _ResidentsManagementState extends State<_ResidentsManagement> {
                 const SizedBox(height: 6),
                 Text('Email: ${user.email}'),
                 const SizedBox(height: 6),
-                Text('Phone: ${user.phoneNumber ?? 'Not set'}'),
+                Text('Phone: ${user.phoneNumber != null && user.phoneNumber!.isNotEmpty ? '+60 ${user.phoneNumber}' : 'Not set'}'),
                 const SizedBox(height: 6),
                 Text('Unit: ${user.propertyUnit}'),
                 const SizedBox(height: 6),
@@ -1102,7 +1102,7 @@ class _AdminProfileState extends State<_AdminProfile> {
                 ListTile(
                   leading: const Icon(Icons.phone),
                   title: const Text('Phone'),
-                  subtitle: Text(admin.phoneNumber ?? 'Not set'),
+                  subtitle: Text(admin.phoneNumber != null && admin.phoneNumber!.isNotEmpty ? '+60 ${admin.phoneNumber}' : 'Not set'),
                 ),
                 const Divider(height: 1),
                 ListTile(

@@ -222,7 +222,14 @@ class ProfileTab extends StatelessWidget {
                         ),
                         _buildInfoRow(context, Icons.home_rounded, 'Address', currentUser.propertySimpleAddress),
                         const SizedBox(height: 12),
-                        _buildInfoRow(context, Icons.phone_rounded, 'Phone', currentUser.phoneNumber ?? 'Not set'),
+                        _buildInfoRow(
+                          context,
+                          Icons.phone_rounded,
+                          'Phone',
+                          (currentUser.phoneNumber != null && currentUser.phoneNumber!.isNotEmpty)
+                              ? '+60 ${currentUser.phoneNumber}'
+                              : 'Not set',
+                        ),
                       ],
                     ),
                   ),

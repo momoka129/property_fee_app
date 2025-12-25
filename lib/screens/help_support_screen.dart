@@ -225,7 +225,7 @@ class HelpSupportScreen extends StatelessWidget {
                 Icon(Icons.phone, size: 16, color: Colors.grey.shade600),
                 const SizedBox(width: 8),
                 Text(
-                  phone,
+                  phone.startsWith('+60') ? phone : '+60 $phone',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(width: 16),
@@ -285,7 +285,10 @@ class HelpSupportScreen extends StatelessWidget {
   }
 
   void _makePhoneCall(String phone) async {
-    final uri = Uri.parse('tel:$phone');
+    // Normalize phone to digits and ensure +60 prefix for calling.
+    final digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    final normalized = digits.startsWith('60') ? '+$digits' : '+60$digits';
+    final uri = Uri.parse('tel:$normalized');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     }
