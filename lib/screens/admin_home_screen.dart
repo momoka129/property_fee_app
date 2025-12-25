@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import '../utils/url_utils.dart';
-import '../data/mock_data.dart';
-import '../routes.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firestore_service.dart';
 import '../models/bill_model.dart';
-import '../models/user_model.dart';
-import '../models/announcement_model.dart';
 import '../models/repair_model.dart';
+import '../models/package_model.dart';
+import '../routes.dart';
+// 引入 Profile 页面
+import 'edit_profile_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -18,483 +17,97 @@ class AdminHomeScreen extends StatefulWidget {
 }
 
 class _AdminHomeScreenState extends State<AdminHomeScreen> {
-  int _selectedIndex = 0;
+  // 现代配色方案
+  final Color bgGradientStart = const Color(0xFFF3F4F6);
+  final Color bgGradientEnd = const Color(0xFFE5E7EB);
+  final Color cardColor = Colors.white;
+  final Color primaryColor = const Color(0xFF4F46E5); // Indigo
+  final Color secondaryColor = const Color(0xFF818CF8);
+  final Color successColor = const Color(0xFF10B981); // Emerald
+  final Color warningColor = const Color(0xFFF59E0B); // Amber
+  final Color errorColor = const Color(0xFFEF4444); // Red
+
+  // 统一样式
+  final BorderRadius kCardRadius = BorderRadius.circular(24);
+  final List<BoxShadow> kCardShadow = [
+    BoxShadow(
+      color: const Color(0xFF1F2937).withOpacity(0.06),
+      blurRadius: 20,
+      offset: const Offset(0, 10),
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      const _AdminDashboard(),
-      const _ResidentsManagement(),
-      const _AdminProfile(),
-    ];
-
     return Scaffold(
-      body: pages[_selectedIndex],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() => _selectedIndex = index);
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [bgGradientStart, bgGradientEnd],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
-            label: 'Residents',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-      ),
-    );
-  }
-}
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // 自定义头部
+              _buildCustomAppBar(context),
 
-class _AdminDashboard extends StatefulWidget {
-  const _AdminDashboard();
+              // 滚动内容区
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. KPI 核心指标
+                      _buildKPIGrid(),
+                      const SizedBox(height: 24),
 
-  @override
-  State<_AdminDashboard> createState() => _AdminDashboardState();
-}
+                      // 2. 财务趋势 (大卡片)
+                      _buildSectionTitle("Financial Overview"),
+                      const SizedBox(height: 12),
+                      _buildRevenueChart(),
+                      const SizedBox(height: 24),
 
-class _AdminDashboardState extends State<_AdminDashboard> {
-  Future<Map<String, dynamic>> _getDashboardStats() async {
-    try {
-      // Get bills data
-      final billsSnapshot = await FirestoreService.getAllBillsStream().first;
-      final unpaidBills = billsSnapshot.where((bill) => bill.status == 'unpaid').length;
-
-      // Get repairs data
-      final repairsSnapshot = await FirestoreService.getAllRepairsStream().first;
-
-      // Get packages data
-      final packagesSnapshot = await FirestoreService.getAllPackagesStream().first;
-      final readyPackages = packagesSnapshot.where((pkg) => pkg.status == 'ready').length;
-
-      return {
-        'totalBills': billsSnapshot.length,
-        'unpaidBills': unpaidBills,
-        'totalRepairs': repairsSnapshot.length,
-        'readyPackages': readyPackages,
-      };
-    } catch (e) {
-      print('Error loading dashboard stats: $e');
-      return {
-        'totalBills': 0,
-        'unpaidBills': 0,
-        'totalRepairs': 0,
-        'readyPackages': 0,
-      };
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _getDashboardStats(),
-      builder: (context, statsSnapshot) {
-        if (statsSnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final stats = statsSnapshot.data ?? {'totalBills': 0, 'unpaidBills': 0, 'totalRepairs': 0, 'readyPackages': 0};
-        final totalBills = stats['totalBills'] ?? 0;
-        final totalRepairs = stats['totalRepairs'] ?? 0;
-
-        return CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              expandedHeight: 120,
-              floating: false,
-              pinned: true,
-              flexibleSpace: FlexibleSpaceBar(
-                background: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Colors.orange.shade700,
-                        Colors.deepOrange.shade800,
-                      ],
-                    ),
-                  ),
-                  child: const SafeArea(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(20, 16, 20, 16),
-                      child: Column(
+                      // 3. 详细分布 (左右布局)
+                      Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Row(
-                            children: [
-                              Icon(Icons.admin_panel_settings, color: Colors.white, size: 32),
-                              SizedBox(width: 12),
-                              Text(
-                                'Admin Dashboard',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildSectionTitle("Bill Status"),
+                                const SizedBox(height: 12),
+                                _buildBillStatusPieChart(),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildSectionTitle("Repairs"),
+                                const SizedBox(height: 12),
+                                _buildRepairBarChart(),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 24),
+
+                      // 4. 快捷管理入口
+                      _buildSectionTitle("Quick Actions"),
+                      const SizedBox(height: 12),
+                      _buildQuickActions(context),
+                      const SizedBox(height: 40),
+                    ],
                   ),
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Statistics Cards
-                    Text(
-                      'Overview',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            'Total Bills',
-                            '$totalBills',
-                            Icons.receipt_long,
-                            Colors.blue,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            'Unpaid',
-                            '${stats['unpaidBills']}',
-                            Icons.pending_actions,
-                            Colors.orange,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            'Repairs',
-                            '$totalRepairs',
-                            Icons.build,
-                            Colors.purple,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            'Packages',
-                            '${stats['readyPackages']}',
-                            Icons.inventory_2,
-                            Colors.green,
-                            onTap: () {
-                              Navigator.pushNamed(context, AppRoutes.adminPackages);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    // Announcements preview + manage button
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Announcements',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, AppRoutes.adminAnnouncements);
-                          },
-                          child: const Text('Manage'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    StreamBuilder<List<AnnouncementModel>>(
-                      stream: FirestoreService.announcementsStream(limit: 2),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return const Text('No announcements');
-                        }
-                        final items = snapshot.data!;
-                        return Column(
-                          children: items.map((ann) {
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: ListTile(
-                                leading: ann.isPinned ? const Icon(Icons.push_pin, color: Colors.orange) : null,
-                                title: Text(ann.title),
-                                subtitle: Text(DateFormat('MMM dd').format(ann.publishedAt)),
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    // Recent Activities
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Bills',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, AppRoutes.adminBills);
-                          },
-                          child: const Text('View all'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    StreamBuilder<List<BillModel>>(
-                      stream: FirestoreService.getAllBillsStream(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-                        if (snapshot.hasError) {
-                          return Center(child: Text('Error loading bills: ${snapshot.error}'));
-                        }
-                        final bills = snapshot.data ?? [];
-                        if (bills.isEmpty) {
-                          return const Text('No bills');
-                        }
-
-                        final displayBills = bills.take(3).toList();
-                        return FutureBuilder<List<UserModel>>(
-                          future: FirestoreService.getUsers(),
-                          builder: (context, usersSnapshot) {
-                            final users = usersSnapshot.data ?? [];
-                            final Map<String, UserModel> userById = {
-                              for (var u in users) u.id: u
-                            };
-
-                            return Column(
-                              children: displayBills.map((bill) {
-                                final linkedUser = userById[bill.userId];
-                                final displayName = linkedUser?.name ?? bill.payerName;
-
-                                return Card(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  child: ListTile(
-                                    leading: CircleAvatar(
-                                      backgroundColor: bill.status == 'paid'
-                                          ? Colors.green.withOpacity(0.1)
-                                          : Colors.orange.withOpacity(0.1),
-                                      child: Icon(
-                                        bill.status == 'paid' ? Icons.check : Icons.schedule,
-                                        color: bill.status == 'paid' ? Colors.green : Colors.orange,
-                                      ),
-                                    ),
-                                    title: Text(bill.title),
-                                    subtitle: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text('RM ${bill.amount.toStringAsFixed(2)}'),
-                                        Text(displayName, style: TextStyle(color: Colors.grey[700], fontSize: 12)),
-                                      ],
-                                    ),
-                                    trailing: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: bill.status == 'paid'
-                                            ? Colors.green.withOpacity(0.1)
-                                            : Colors.orange.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        bill.statusText,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: bill.status == 'paid' ? Colors.green : Colors.orange,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Recent Repairs
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Recent Repairs',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, AppRoutes.adminRepairs);
-                          },
-                          child: const Text('View all'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    StreamBuilder<List<RepairModel>>(
-                      stream: FirestoreService.getAllRepairsStream(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-                        if (snapshot.hasError) {
-                          return Center(child: Text('Error loading repairs: ${snapshot.error}'));
-                        }
-                        final repairs = snapshot.data ?? [];
-                        if (repairs.isEmpty) {
-                          return const Text('No repairs');
-                        }
-
-                        final displayRepairs = repairs.take(3).toList();
-                        return FutureBuilder<List<UserModel>>(
-                          future: FirestoreService.getUsers(),
-                          builder: (context, usersSnapshot) {
-                            final users = usersSnapshot.data ?? [];
-                            final Map<String, UserModel> userById = {
-                              for (var u in users) u.id: u
-                            };
-
-                            return Column(
-                              children: displayRepairs.map((repair) {
-                                final linkedUser = userById[repair.userId];
-                                final displayName = linkedUser?.name ?? 'Unknown User';
-
-                                Color statusColor;
-                                switch (repair.status) {
-                                  case 'completed':
-                                    statusColor = Colors.green;
-                                    break;
-                                  case 'in_progress':
-                                    statusColor = Colors.blue;
-                                    break;
-                                  default:
-                                    statusColor = Colors.orange;
-                                }
-
-                                return Card(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  child: ListTile(
-                                    leading: CircleAvatar(
-                                      backgroundColor: statusColor.withOpacity(0.1),
-                                      child: Icon(Icons.build, color: statusColor),
-                                    ),
-                                    title: Text(repair.title),
-                                    subtitle: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(repair.location),
-                                        Text(displayName, style: TextStyle(color: Colors.grey[700], fontSize: 12)),
-                                      ],
-                                    ),
-                                    trailing: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: statusColor.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        repair.statusDisplay,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: statusColor,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildStatCard(
-      BuildContext context,
-      String title,
-      String value,
-      IconData icon,
-      Color color, {
-        VoidCallback? onTap, // 新增参数
-      }) {
-    return Card(
-      elevation: 0,
-      color: color.withOpacity(0.1),
-      clipBehavior: Clip.antiAlias, // 确保水波纹效果不溢出
-      child: InkWell( // 使用 InkWell 包裹内容以支持点击
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: TextStyle(
-                  color: Colors.grey.shade700,
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: color,
                 ),
               ),
             ],
@@ -503,682 +116,548 @@ class _AdminDashboardState extends State<_AdminDashboard> {
       ),
     );
   }
-}
 
-class _ResidentsManagement extends StatefulWidget {
-  const _ResidentsManagement();
-
-  @override
-  State<_ResidentsManagement> createState() => _ResidentsManagementState();
-}
-
-class _ResidentsManagementState extends State<_ResidentsManagement> {
-  late Future<List<UserModel>> _futureUsers;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUsers();
-  }
-
-  void _loadUsers() {
-    setState(() {
-      _futureUsers = FirestoreService.getUsers();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Residents Management'),
-      ),
-      body: FutureBuilder<List<UserModel>>(
-        future: _futureUsers,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error loading residents: ${snapshot.error}'));
-          }
-          final residents = snapshot.data ?? [];
-          if (residents.isEmpty) {
-            return const Center(child: Text('No residents found'));
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: residents.length,
-            itemBuilder: (context, index) {
-              final resident = residents[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: isValidImageUrl(resident.avatar) ? NetworkImage(resident.avatar!) : null,
-                    child: !isValidImageUrl(resident.avatar) ? Text(resident.name.isNotEmpty ? resident.name[0] : '?') : null,
-                  ),
-                  title: Text(resident.name),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                    Text(resident.email),
-                      Text('Address: ${resident.propertySimpleAddress}'),
-                    ],
-                  ),
-                  onTap: () => _showResidentDetailDialog(resident),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) async {
-                      if (value == 'edit') {
-                        await _showEditResidentForm(resident);
-                      } else if (value == 'promote') {
-                        await _confirmPromote(resident);
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      const PopupMenuItem(value: 'promote', child: Text('Promote to Admin')),
-                    ],
-                  ),
-                  isThreeLine: true,
+  // --- 头部设计 (含点击头像跳转逻辑) ---
+  Widget _buildCustomAppBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Welcome back,',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
                 ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Admin Dashboard',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black87,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+          // 头像交互区域
+          GestureDetector(
+            onTap: () {
+              // 逻辑：跳转到 Profile 界面
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const EditProfileScreen()),
               );
             },
+            child: Container(
+              padding: const EdgeInsets.all(3), // 白色边框效果
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: primaryColor.withOpacity(0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const CircleAvatar(
+                radius: 22,
+                backgroundImage: AssetImage('assets/images/avatar_default.png'),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Color(0xFF1F2937),
+      ),
+    );
+  }
+
+  // --- KPI Grid ---
+  Widget _buildKPIGrid() {
+    return StreamBuilder<List<BillModel>>(
+      stream: FirestoreService.getAllBillsStream(),
+      builder: (context, billSnap) {
+        return StreamBuilder<List<RepairModel>>(
+          stream: FirestoreService.getAllRepairsStream(),
+          builder: (context, repairSnap) {
+            return StreamBuilder<List<PackageModel>>(
+              stream: FirestoreService.getAllPackagesStream(),
+              builder: (context, packageSnap) {
+                // 数据计算
+                final bills = billSnap.data ?? [];
+                final repairs = repairSnap.data ?? [];
+                final packages = packageSnap.data ?? [];
+
+                final totalRevenue = bills
+                    .where((b) => b.status == 'paid')
+                    .fold(0.0, (sum, b) => sum + b.amount);
+
+                final overdueCount = bills.where((b) => b.status == 'overdue').length;
+                final pendingRepairs = repairs.where((r) => r.status == 'pending').length;
+                final activePackages = packages.where((p) => p.status != 'collected').length;
+
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = (constraints.maxWidth - 16) / 2;
+                    return Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        _buildStatCard(
+                          title: 'Total Revenue',
+                          value: 'RM ${totalRevenue.toStringAsFixed(0)}',
+                          icon: Icons.monetization_on_outlined,
+                          themeColor: successColor,
+                          width: width,
+                          isMain: true, // 突出显示
+                        ),
+                        _buildStatCard(
+                          title: 'Overdue Bills',
+                          value: '$overdueCount',
+                          icon: Icons.error_outline,
+                          themeColor: errorColor,
+                          width: width,
+                        ),
+                        _buildStatCard(
+                          title: 'Pending Repairs',
+                          value: '$pendingRepairs',
+                          icon: Icons.home_repair_service_outlined,
+                          themeColor: warningColor,
+                          width: width,
+                        ),
+                        _buildStatCard(
+                          title: 'Packages',
+                          value: '$activePackages',
+                          icon: Icons.inventory_2_outlined,
+                          themeColor: primaryColor,
+                          width: width,
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color themeColor,
+    required double width,
+    bool isMain = false,
+  }) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isMain ? themeColor : cardColor,
+        borderRadius: kCardRadius,
+        boxShadow: kCardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isMain ? Colors.white.withOpacity(0.2) : themeColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: isMain ? Colors.white : themeColor,
+                  size: 20,
+                ),
+              ),
+              if (!isMain)
+                Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey[300]),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: isMain ? Colors.white : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: isMain ? Colors.white.withOpacity(0.8) : Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Revenue Chart (曲线更平滑，带有渐变) ---
+  Widget _buildRevenueChart() {
+    return Container(
+      height: 260,
+      padding: const EdgeInsets.fromLTRB(20, 25, 25, 10),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: kCardRadius,
+        boxShadow: kCardShadow,
+      ),
+      child: StreamBuilder<List<BillModel>>(
+        stream: FirestoreService.getAllBillsStream(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+          final bills = snapshot.data!;
+          final now = DateTime.now();
+          List<FlSpot> spots = [];
+
+          // 过去6个月数据模拟
+          for (int i = 5; i >= 0; i--) {
+            final monthStart = DateTime(now.year, now.month - i, 1);
+            final monthEnd = DateTime(now.year, now.month - i + 1, 0);
+
+            final monthlyRevenue = bills
+                .where((b) => b.status == 'paid' &&
+                b.billingDate.isAfter(monthStart) &&
+                b.billingDate.isBefore(monthEnd))
+                .fold(0.0, (sum, b) => sum + b.amount);
+
+            spots.add(FlSpot((5-i).toDouble(), monthlyRevenue));
+          }
+
+          double maxY = spots.map((e) => e.y).reduce((a, b) => a > b ? a : b);
+          if (maxY == 0) maxY = 100;
+
+          return LineChart(
+            LineChartData(
+              gridData: FlGridData(show: false), // 隐藏网格，看起来更干净
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      final date = DateTime(now.year, now.month - (5 - value.toInt()), 1);
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 10.0),
+                        child: Text(
+                          DateFormat('MMM').format(date),
+                          style: TextStyle(fontSize: 11, color: Colors.grey[400], fontWeight: FontWeight.w600),
+                        ),
+                      );
+                    },
+                    interval: 1,
+                  ),
+                ),
+              ),
+              borderData: FlBorderData(show: false),
+              minX: 0,
+              maxX: 5,
+              minY: 0,
+              maxY: maxY * 1.25,
+              lineBarsData: [
+                LineChartBarData(
+                  spots: spots,
+                  isCurved: true, // 平滑曲线
+                  curveSmoothness: 0.35,
+                  color: primaryColor,
+                  barWidth: 3,
+                  isStrokeCapRound: true,
+                  dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) {
+                        return FlDotCirclePainter(
+                          radius: 4,
+                          color: Colors.white,
+                          strokeWidth: 2,
+                          strokeColor: primaryColor,
+                        );
+                      }
+                  ),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    gradient: LinearGradient(
+                      colors: [
+                        primaryColor.withOpacity(0.2),
+                        primaryColor.withOpacity(0.0),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                ),
+              ],
+              lineTouchData: LineTouchData(
+                touchTooltipData: LineTouchTooltipData(
+                  // 修复点：移除了 tooltipRoundedRadius
+                  tooltipPadding: const EdgeInsets.all(8),
+                  getTooltipItems: (touchedSpots) {
+                    return touchedSpots.map((spot) {
+                      return LineTooltipItem(
+                        'RM ${spot.y.toStringAsFixed(0)}',
+                        const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                      );
+                    }).toList();
+                  },
+                ),
+              ),
+            ),
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddResidentDialog,
-        icon: const Icon(Icons.person_add),
-        label: const Text('New Resident'),
+    );
+  }
+
+  // --- Bill Status Pie Chart (简化版) ---
+  Widget _buildBillStatusPieChart() {
+    return Container(
+      height: 200,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: kCardRadius,
+        boxShadow: kCardShadow,
       ),
-    );
-  }
+      child: StreamBuilder<List<BillModel>>(
+        stream: FirestoreService.getAllBillsStream(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final bills = snapshot.data!;
+          final paid = bills.where((b) => b.status == 'paid').length;
+          final unpaid = bills.where((b) => b.status == 'unpaid').length;
+          final overdue = bills.where((b) => b.status == 'overdue').length;
 
-  Future<void> _showAddResidentDialog() async {
-    final nameCtl = TextEditingController();
-    final emailCtl = TextEditingController();
-    final phoneCtl = TextEditingController();
-    String selectedBuilding = 'Alpha Building';
-    String selectedFloor = 'G';
-    String selectedUnit = '01';
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        // Use StatefulBuilder so dropdown selections rebuild inside the dialog
-        return StatefulBuilder(builder: (context, setStateDialog) {
-          return AlertDialog(
-            title: const Text('Add Resident'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(controller: nameCtl, decoration: const InputDecoration(labelText: 'Name')),
-                  const SizedBox(height: 8),
-                  TextField(controller: emailCtl, decoration: const InputDecoration(labelText: 'Email')),
-                  const SizedBox(height: 8),
-                  TextField(controller: phoneCtl, decoration: const InputDecoration(labelText: 'Phone')),
-                  const SizedBox(height: 12),
-
-                  // Building selection (three choices inline)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text('Building', style: Theme.of(context).textTheme.bodySmall),
-                  ),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      ChoiceChip(
-                        label: const Text('Alpha Building'),
-                        selected: selectedBuilding == 'Alpha Building',
-                        onSelected: (_) => setStateDialog(() => selectedBuilding = 'Alpha Building'),
-                      ),
-                      ChoiceChip(
-                        label: const Text('Beta Building'),
-                        selected: selectedBuilding == 'Beta Building',
-                        onSelected: (_) => setStateDialog(() => selectedBuilding = 'Beta Building'),
-                      ),
-                      ChoiceChip(
-                        label: const Text('Central Building'),
-                        selected: selectedBuilding == 'Central Building',
-                        onSelected: (_) => setStateDialog(() => selectedBuilding = 'Central Building'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: InputDecorator(
-                          decoration: const InputDecoration(labelText: 'Floor', border: OutlineInputBorder()),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: selectedFloor,
-                              items: const [
-                                DropdownMenuItem(value: 'G', child: Text('G')),
-                                DropdownMenuItem(value: '1', child: Text('1')),
-                                DropdownMenuItem(value: '2', child: Text('2')),
-                                DropdownMenuItem(value: '3', child: Text('3')),
-                                DropdownMenuItem(value: '4', child: Text('4')),
-                                DropdownMenuItem(value: '5', child: Text('5')),
-                              ],
-                              onChanged: (v) {
-                                if (v == null) return;
-                                setStateDialog(() => selectedFloor = v);
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: InputDecorator(
-                          decoration: const InputDecoration(labelText: 'Unit', border: OutlineInputBorder()),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: selectedUnit,
-                              items: const [
-                                DropdownMenuItem(value: '01', child: Text('01')),
-                                DropdownMenuItem(value: '02', child: Text('02')),
-                              ],
-                              onChanged: (v) {
-                                if (v == null) return;
-                                setStateDialog(() => selectedUnit = v);
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-              ElevatedButton(
-                onPressed: () async {
-                  final propertySimpleAddress = '$selectedBuilding ${selectedFloor}${selectedUnit}';
-
-                  // Check if address is already occupied
-                  final addressExists = await FirestoreService.checkAddressExists(propertySimpleAddress);
-                  if (addressExists) {
-                    // Show an error dialog so the message appears above the current modal
-                    if (!mounted) return;
-                    await showDialog<void>(
-                      context: context,
-                      builder: (ctx) {
-                        return AlertDialog(
-                          title: const Text('Address already in use'),
-                          content: const Text('This address is already in use and cannot be used to create a resident. Please contact the administrator or choose another address.'),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK')),
-                          ],
-                        );
-                      },
-                    );
-                    return;
-                  }
-
-                  final payload = {
-                    'name': nameCtl.text.trim(),
-                    'email': emailCtl.text.trim(),
-                    'phoneNumber': phoneCtl.text.trim(),
-                    'propertySimpleAddress': propertySimpleAddress,
-                    'role': 'user',
-                  };
-                  try {
-                    await FirestoreService.createUser(payload);
-                    Navigator.of(context).pop(true);
-                  } catch (e) {
-                    if (!mounted) return;
-                    await showDialog<void>(
-                      context: context,
-                      builder: (ctx) {
-                        return AlertDialog(
-                          title: const Text('Creation failed'),
-                          content: const Text('Failed to create resident. Please try again later.'),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK')),
-                          ],
-                        );
-                      },
-                    );
-                  }
-                },
-                child: const Text('Create'),
-              ),
-            ],
-          );
-        });
-      },
-    );
-
-    if (result == true) _loadUsers();
-  }
-
-  Future<void> _showResidentDetailDialog(UserModel user) async {
-    // Show user details (read-only). Exclude id, createdAt, role.
-    await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('${user.name}'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isValidImageUrl(user.avatar))
-                  Center(
-                    child: CircleAvatar(
-                      radius: 36,
-                      backgroundImage: NetworkImage(user.avatar!),
-                    ),
-                  ),
-                if (isValidImageUrl(user.avatar)) const SizedBox(height: 12),
-                Text('Name: ${user.name}'),
-                const SizedBox(height: 6),
-                Text('Email: ${user.email}'),
-                const SizedBox(height: 6),
-                Text('Phone: ${user.phoneNumber ?? 'Not set'}'),
-                const SizedBox(height: 6),
-                Text('Address: ${user.propertySimpleAddress}'),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Close')),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _showEditResidentForm(UserModel user) async {
-    final nameCtl = TextEditingController(text: user.name);
-    final emailCtl = TextEditingController(text: user.email);
-    final phoneCtl = TextEditingController(text: user.phoneNumber ?? '');
-    String selectedBuilding = 'Alpha Building';
-    String selectedFloor = 'G';
-    String selectedUnit = '01';
-
-    // Try to parse existing combined simple address: "Alpha Building G01"
-    try {
-      final spa = user.propertySimpleAddress;
-      if (spa.isNotEmpty) {
-        final lastSpace = spa.lastIndexOf(' ');
-        if (lastSpace > 0 && lastSpace < spa.length - 1) {
-          selectedBuilding = spa.substring(0, lastSpace);
-          final rest = spa.substring(lastSpace + 1); // e.g. G01
-          if (rest.isNotEmpty) {
-            selectedFloor = rest.substring(0, 1);
-            if (rest.length >= 3) {
-              selectedUnit = rest.substring(1);
-            } else if (rest.length == 2) {
-              selectedUnit = rest.substring(1);
-            }
+          // 没有任何账单时
+          if (bills.isEmpty) {
+            return Center(child: Text("No Data", style: TextStyle(color: Colors.grey[400])));
           }
-        }
-      }
-    } catch (_) {}
 
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(builder: (context, setStateDialog) {
-          return AlertDialog(
-            title: const Text('Edit Resident'),
-            content: SingleChildScrollView(
-              child: Column(
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              PieChart(
+                PieChartData(
+                  sectionsSpace: 3,
+                  centerSpaceRadius: 35,
+                  sections: [
+                    _buildPieSection(paid.toDouble(), successColor),
+                    _buildPieSection(unpaid.toDouble(), warningColor),
+                    _buildPieSection(overdue.toDouble(), errorColor),
+                  ],
+                ),
+              ),
+              // 中间显示总数
+              Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: nameCtl, decoration: const InputDecoration(labelText: 'Name')),
-                  const SizedBox(height: 8),
-                  TextField(controller: emailCtl, decoration: const InputDecoration(labelText: 'Email')),
-                  const SizedBox(height: 8),
-                  TextField(controller: phoneCtl, decoration: const InputDecoration(labelText: 'Phone')),
-                  const SizedBox(height: 12),
-
-                  // Building selection (three choices inline)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text('Building', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    "${bills.length}",
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
                   ),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      ChoiceChip(
-                        label: const Text('Alpha Building'),
-                        selected: selectedBuilding == 'Alpha Building',
-                        onSelected: (_) => setStateDialog(() => selectedBuilding = 'Alpha Building'),
-                      ),
-                      ChoiceChip(
-                        label: const Text('Beta Building'),
-                        selected: selectedBuilding == 'Beta Building',
-                        onSelected: (_) => setStateDialog(() => selectedBuilding = 'Beta Building'),
-                      ),
-                      ChoiceChip(
-                        label: const Text('Central Building'),
-                        selected: selectedBuilding == 'Central Building',
-                        onSelected: (_) => setStateDialog(() => selectedBuilding = 'Central Building'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: InputDecorator(
-                          decoration: const InputDecoration(labelText: 'Floor', border: OutlineInputBorder()),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: selectedFloor,
-                              items: const [
-                                DropdownMenuItem(value: 'G', child: Text('G')),
-                                DropdownMenuItem(value: '1', child: Text('1')),
-                                DropdownMenuItem(value: '2', child: Text('2')),
-                                DropdownMenuItem(value: '3', child: Text('3')),
-                                DropdownMenuItem(value: '4', child: Text('4')),
-                                DropdownMenuItem(value: '5', child: Text('5')),
-                              ],
-                              onChanged: (v) {
-                                if (v == null) return;
-                                setStateDialog(() => selectedFloor = v);
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: InputDecorator(
-                          decoration: const InputDecoration(labelText: 'Unit', border: OutlineInputBorder()),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: selectedUnit,
-                              items: const [
-                                DropdownMenuItem(value: '01', child: Text('01')),
-                                DropdownMenuItem(value: '02', child: Text('02')),
-                              ],
-                              onChanged: (v) {
-                                if (v == null) return;
-                                setStateDialog(() => selectedUnit = v);
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  const Text(
+                    "Total",
+                    style: TextStyle(fontSize: 10, color: Colors.grey),
                   ),
                 ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  final ok = await showDialog<bool>(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: const Text('Delete Resident'),
-                        content: Text('Are you sure you want to delete ${user.name}? This action cannot be undone.'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-                          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
-                        ],
-                      );
-                    },
-                  );
-                  if (ok == true) {
-                    await FirestoreService.deleteUser(user.id);
-                    Navigator.of(context).pop(true);
-                  }
-                },
-                child: const Text('Delete', style: TextStyle(color: Colors.red)),
-              ),
-              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-              ElevatedButton(
-                onPressed: () async {
-                  final propertySimpleAddress = '$selectedBuilding ${selectedFloor}${selectedUnit}';
-
-                  // Check if address is already occupied (excluding current user)
-                  final addressExists = await FirestoreService.checkAddressExists(propertySimpleAddress, excludeUserId: user.id);
-                  if (addressExists) {
-                    // Show an error dialog so the message appears above the current modal
-                    if (!mounted) return;
-                    await showDialog<void>(
-                      context: context,
-                      builder: (ctx) {
-                        return AlertDialog(
-                          title: const Text('Address already in use'),
-                          content: const Text('This address is already in use and cannot be updated. Please contact the administrator or choose another address.'),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK')),
-                          ],
-                        );
-                      },
-                    );
-                    return;
-                  }
-
-                  final payload = {
-                    'name': nameCtl.text.trim(),
-                    'email': emailCtl.text.trim(),
-                    'phoneNumber': phoneCtl.text.trim(),
-                    'propertySimpleAddress': propertySimpleAddress,
-                  };
-                  try {
-                    await FirestoreService.updateUser(user.id, payload);
-                    Navigator.of(context).pop(true);
-                  } catch (e) {
-                    if (!mounted) return;
-                    await showDialog<void>(
-                      context: context,
-                      builder: (ctx) {
-                        return AlertDialog(
-                          title: const Text('Save failed'),
-                          content: const Text('Failed to save changes. Please try again later.'),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK')),
-                          ],
-                        );
-                      },
-                    );
-                  }
-                },
-                child: const Text('Save'),
-              ),
+              )
             ],
           );
-        });
-      },
+        },
+      ),
     );
-
-    if (result == true) _loadUsers();
   }
 
-  Future<void> _confirmPromote(UserModel user) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Promote to Admin'),
-          content: Text('Are you sure you want to promote ${user.name} to admin?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-            ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Promote')),
-          ],
+  PieChartSectionData _buildPieSection(double val, Color color) {
+    return PieChartSectionData(
+      value: val,
+      color: color,
+      radius: 18,
+      showTitle: false,
+    );
+  }
+
+  // --- Repair Bar Chart (圆角柱状) ---
+  Widget _buildRepairBarChart() {
+    return Container(
+      height: 200,
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 10),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: kCardRadius,
+        boxShadow: kCardShadow,
+      ),
+      child: StreamBuilder<List<RepairModel>>(
+        stream: FirestoreService.getAllRepairsStream(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final repairs = snapshot.data!;
+          final pending = repairs.where((r) => r.status == 'pending').length.toDouble();
+          final progress = repairs.where((r) => r.status == 'in_progress').length.toDouble();
+          final completed = repairs.where((r) => r.status == 'completed').length.toDouble();
+
+          double maxY = [pending, progress, completed].reduce((a, b) => a > b ? a : b);
+          if (maxY == 0) maxY = 5;
+
+          return BarChart(
+            BarChartData(
+              barGroups: [
+                _makeBarGroup(0, pending, warningColor),
+                _makeBarGroup(1, progress, primaryColor),
+                _makeBarGroup(2, completed, successColor),
+              ],
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      const style = TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold);
+                      switch (value.toInt()) {
+                        case 0: return const Padding(padding: EdgeInsets.only(top: 6), child: Text('Wait', style: style));
+                        case 1: return const Padding(padding: EdgeInsets.only(top: 6), child: Text('WIP', style: style));
+                        case 2: return const Padding(padding: EdgeInsets.only(top: 6), child: Text('Done', style: style));
+                        default: return const Text('');
+                      }
+                    },
+                  ),
+                ),
+              ),
+              borderData: FlBorderData(show: false),
+              gridData: FlGridData(show: false),
+              maxY: maxY * 1.2,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  BarChartGroupData _makeBarGroup(int x, double y, Color color) {
+    return BarChartGroupData(
+      x: x,
+      barRods: [
+        BarChartRodData(
+          toY: y,
+          color: color,
+          width: 12,
+          borderRadius: BorderRadius.circular(6), // 全圆角
+          backDrawRodData: BackgroundBarChartRodData(
+            show: true,
+            toY: y == 0 ? 5 : y * 1.2, // 动态背景高度
+            color: const Color(0xFFF3F4F6),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- Quick Actions Grid (拟态图标) ---
+  Widget _buildQuickActions(BuildContext context) {
+    final actions = [
+      {'icon': Icons.receipt_long_rounded, 'label': 'Bills', 'route': AppRoutes.adminBills, 'color': const Color(0xFF6366F1)},
+      {'icon': Icons.handyman_rounded, 'label': 'Repairs', 'route': AppRoutes.adminRepairs, 'color': const Color(0xFFF59E0B)},
+      {'icon': Icons.inventory_2_rounded, 'label': 'Parcels', 'route': AppRoutes.adminPackages, 'color': const Color(0xFF10B981)},
+      {'icon': Icons.campaign_rounded, 'label': 'News', 'route': AppRoutes.adminAnnouncements, 'color': const Color(0xFFEC4899)},
+      {'icon': Icons.local_parking_rounded, 'label': 'Parking', 'route': AppRoutes.adminParking, 'color': const Color(0xFF3B82F6)},
+      {'icon': Icons.people_rounded, 'label': 'Users', 'route': AppRoutes.adminHome, 'color': const Color(0xFF8B5CF6)},
+    ];
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        crossAxisSpacing: 15,
+        mainAxisSpacing: 15,
+        childAspectRatio: 0.85,
+      ),
+      itemCount: actions.length,
+      itemBuilder: (context, index) {
+        final action = actions[index];
+        final color = action['color'] as Color;
+
+        return InkWell(
+          onTap: () {
+            if (action['label'] == 'Users') {
+              // 占位
+            } else {
+              Navigator.pushNamed(context, action['route'] as String);
+            }
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                height: 55,
+                width: 55,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withOpacity(0.15),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    )
+                  ],
+                ),
+                child: Icon(
+                  action['icon'] as IconData,
+                  color: color,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                action['label'] as String,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         );
       },
-    );
-    if (ok == true) {
-      await FirestoreService.updateUser(user.id, {'role': 'admin'});
-      _loadUsers();
-    }
-  }
-}
-
-class _AdminProfile extends StatefulWidget {
-  const _AdminProfile();
-
-  @override
-  State<_AdminProfile> createState() => _AdminProfileState();
-}
-
-class _AdminProfileState extends State<_AdminProfile> {
-  UserModel? _admin;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAdmin();
-  }
-
-  Future<void> _loadAdmin() async {
-    try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      UserModel? admin;
-      if (uid != null) {
-        admin = await FirestoreService.getAdminByUid(uid);
-      }
-      // fallback: pick first admin in collection
-      if (admin == null) {
-        final admins = await FirestoreService.getAdmins();
-        if (admins.isNotEmpty) admin = admins.first;
-      }
-      setState(() {
-        _admin = admin ?? MockData.currentUser;
-        _isLoading = false;
-      });
-    } catch (e) {
-      // on error, fallback to MockData
-      setState(() {
-        _admin = MockData.currentUser;
-        _isLoading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final admin = _admin!;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              // clear local mock and sign out
-              MockData.currentUser = null;
-              try {
-                await FirebaseAuth.instance.signOut();
-              } catch (_) {}
-              Navigator.pushReplacementNamed(context, AppRoutes.login);
-            },
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Center(
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 50,
-                  backgroundImage: isValidImageUrl(admin.avatar) ? NetworkImage(admin.avatar!) : null,
-                  child: !isValidImageUrl(admin.avatar) ? const Icon(Icons.person, size: 50) : null,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  admin.name,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'ADMINISTRATOR',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 32),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.email),
-                  title: const Text('Email'),
-                  subtitle: Text(admin.email),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.phone),
-                  title: const Text('Phone'),
-                  subtitle: Text(admin.phoneNumber ?? 'Not set'),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.calendar_today),
-                  title: const Text('Member Since'),
-                  subtitle: Text(DateFormat('MMM dd, yyyy').format(admin.createdAt)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.settings),
-                  title: const Text('Settings'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Settings coming soon')),
-                    );
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.help),
-                  title: const Text('Help & Support'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.pushNamed(context, AppRoutes.helpSupport);
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

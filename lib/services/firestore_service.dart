@@ -619,6 +619,23 @@ class FirestoreService {
     await _db.collection('notifications').doc(notificationId).delete();
   }
 
+  // 在 FirestoreService 类中添加以下方法
+
+  /// Increment like count for an announcement
+  static Future<void> incrementAnnouncementLike(String announcementId) async {
+    // 使用 FieldValue.increment 确保原子操作，防止并发冲突
+    await _db.collection('announcements').doc(announcementId).update({
+      'likeCount': FieldValue.increment(1),
+    });
+  }
+
+  /// Get single announcement stream (for detail screen live updates)
+  static Stream<AnnouncementModel> getAnnouncementStream(String id) {
+    return _db.collection('announcements').doc(id).snapshots().map((doc) {
+      return AnnouncementModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+    });
+  }
+
 }
 
 
