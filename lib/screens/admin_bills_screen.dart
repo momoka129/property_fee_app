@@ -27,6 +27,9 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
     ),
   ];
 
+  // 账单过滤状态
+  String _selectedFilter = 'all'; // 'all', 'paid', 'unpaid'
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -42,6 +45,7 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
           child: Column(
             children: [
               _buildHeader(context),
+              _buildFilterButtons(),
               Expanded(child: _buildBillList()),
             ],
           ),
@@ -89,14 +93,73 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
     );
   }
 
+  Widget _buildFilterButtons() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        children: [
+          const Text('Filter:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: kCardShadow,
+              ),
+              child: ToggleButtons(
+                isSelected: [_selectedFilter == 'all', _selectedFilter == 'paid', _selectedFilter == 'unpaid'],
+                onPressed: (index) {
+                  setState(() {
+                    _selectedFilter = ['all', 'paid', 'unpaid'][index];
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                selectedColor: Colors.white,
+                fillColor: primaryColor,
+                color: Colors.black87,
+                textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                constraints: const BoxConstraints(minHeight: 36, minWidth: 70),
+                children: const [
+                  Text('All'),
+                  Text('Paid'),
+                  Text('Unpaid'),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBillList() {
     return StreamBuilder<List<BillModel>>(
       stream: FirestoreService.getAllBillsStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
         if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
-        final bills = snapshot.data ?? [];
-        if (bills.isEmpty) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey[400]), const SizedBox(height: 16), Text('No bills record found', style: TextStyle(color: Colors.grey[500]))]));
+
+        // 应用过滤
+        List<BillModel> bills = snapshot.data ?? [];
+        if (_selectedFilter == 'paid') {
+          bills = bills.where((bill) => bill.status.toLowerCase() == 'paid').toList();
+        } else if (_selectedFilter == 'unpaid') {
+          bills = bills.where((bill) => bill.status.toLowerCase() != 'paid').toList();
+        }
+
+        if (bills.isEmpty) {
+          String emptyMessage = 'No bills record found';
+          switch (_selectedFilter) {
+            case 'paid':
+              emptyMessage = 'No paid bills found';
+              break;
+            case 'unpaid':
+              emptyMessage = 'No unpaid bills found';
+              break;
+          }
+          return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey[400]), const SizedBox(height: 16), Text(emptyMessage, style: TextStyle(color: Colors.grey[500]))]));
+        }
 
         return FutureBuilder<List<UserModel>>(
           future: FirestoreService.getUsers(),
