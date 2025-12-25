@@ -4,10 +4,12 @@ class AnnouncementModel {
   final String content;
   final String category; // 'event', 'maintenance', 'notice', 'facility', 'emergency'
   final String priority; // 'low', 'medium', 'high'
+  final String status;   // 'upcoming', 'ongoing', 'expired'
   final String? image;
   final DateTime publishedAt;
   final String author;
   final bool isPinned;
+  final int likeCount; // 新增点赞数
 
   AnnouncementModel({
     required this.id,
@@ -15,13 +17,14 @@ class AnnouncementModel {
     required this.content,
     required this.category,
     this.priority = 'medium',
+    this.status = 'upcoming', // 默认为 upcoming
     this.image,
     required this.publishedAt,
     required this.author,
     this.isPinned = false,
+    this.likeCount = 0, // 默认为 0
   });
 
-  /// Create model from Firestore map (handles Timestamp, int (ms), ISO string, DateTime).
   factory AnnouncementModel.fromMap(Map<String, dynamic> map, String id) {
     dynamic rawPublishedAt = map['publishedAt'];
     DateTime parsedPublishedAt;
@@ -34,7 +37,6 @@ class AnnouncementModel {
     } else if (rawPublishedAt is String) {
       parsedPublishedAt = DateTime.tryParse(rawPublishedAt) ?? DateTime.now();
     } else {
-      // Firestore Timestamp or other types with toDate()
       try {
         parsedPublishedAt = (rawPublishedAt as dynamic).toDate() as DateTime;
       } catch (_) {
@@ -48,10 +50,12 @@ class AnnouncementModel {
       content: map['content'] ?? '',
       category: map['category'] ?? 'notice',
       priority: map['priority'] ?? 'medium',
+      status: map['status'] ?? 'upcoming', // 读取 status
       image: map['image'] as String?,
       publishedAt: parsedPublishedAt,
       author: map['author'] ?? 'Management',
       isPinned: map['isPinned'] ?? false,
+      likeCount: map['likeCount'] ?? 0, // 读取 likeCount
     );
   }
 
@@ -61,10 +65,12 @@ class AnnouncementModel {
       'content': content,
       'category': category,
       'priority': priority,
+      'status': status,
       'image': image,
       'publishedAt': publishedAt.toIso8601String(),
       'author': author,
       'isPinned': isPinned,
+      'likeCount': likeCount,
     };
   }
 
@@ -85,13 +91,3 @@ class AnnouncementModel {
     }
   }
 }
-
-
-
-
-
-
-
-
-
-
