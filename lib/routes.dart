@@ -22,6 +22,7 @@ import 'screens/bank_transfer_screen.dart';
 import 'models/bill_model.dart';
 import 'screens/admin_packages_screen.dart';
 import 'screens/notifications_screen.dart';
+import 'screens/manage_payment_methods_screen.dart';
 // route-only file; models are not required here
 
 class AppRoutes {
@@ -52,6 +53,7 @@ class AppRoutes {
   static const language = '/language';
   static const adminPackages = '/admin-packages';
   static const notifications = '/notifications';
+  static const String managePaymentMethods = '/manage-payment-methods';
 
   static Map<String, WidgetBuilder> map = {
     login: (_) => const LoginScreen(),
@@ -75,6 +77,7 @@ class AppRoutes {
     manageBanks: (_) => const ManageBanksScreen(),
     adminPackages: (_) => const AdminPackagesScreen(),
     notifications: (_) => const NotificationsScreen(),
+    managePaymentMethods: (context) => const ManagePaymentMethodsScreen(),
 
     bankTransfer: (context) {
       final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/bill_model.dart';
-import '../models/payment_model.dart';
-import '../data/mock_data.dart';
-import '../services/firestore_service.dart';
-import '../routes.dart';
-import 'package:easy_localization/easy_localization.dart';
+import '../models/payment_method_model.dart';
+import '../widgets/classical_dialog.dart';
+import '../widgets/glass_container.dart'; // 务必确保此文件已创建
+import '../routes.dart'; // 引入路由
 
 class PaymentScreen extends StatefulWidget {
   final BillModel bill;
-  final List<BillModel>? bills; // 用于批量支付
+  final List<BillModel>? bills;
 
   const PaymentScreen({
     super.key,
@@ -21,500 +22,429 @@ class PaymentScreen extends StatefulWidget {
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
-  String? _selectedPaymentMethod;
-  bool _isProcessing = false;
-  String? _processingStatus;
+  bool _isLoading = false;
+  // 选中的支付方式 ID
+  String? _selectedId;
+  // 选中的支付方式名称
+  String? _selectedName;
 
-  final List<Map<String, dynamic>> _paymentMethods = [
-    {
-      'id': 'wechat',
-      'name': 'WeChat Pay',
-      'icon': Icons.chat_bubble,
-      'color': Colors.green,
-      'description': 'Scan QR code to pay',
-    },
-    {
-      'id': 'alipay',
-      'name': 'Alipay',
-      'icon': Icons.account_balance_wallet,
-      'color': Colors.blue,
-      'description': 'Pay with Alipay account',
-    },
-    {
-      'id': 'bank_transfer',
-      'name': 'Bank Transfer',
-      'icon': Icons.account_balance,
-      'color': Colors.orange,
-      'description': 'Transfer to bank account',
-    },
-  ];
-
-  double get _totalAmount {
-    if (widget.bills != null) {
-      return widget.bills!.fold<double>(0, (sum, b) => sum + b.amount);
+  List<BillModel> get _targetBills {
+    if (widget.bills != null && widget.bills!.isNotEmpty) {
+      return widget.bills!;
     }
-    return widget.bill.amount;
+    return [widget.bill];
   }
+
+  double get _totalAmountToPay {
+    return _targetBills.fold(0.0, (sum, b) {
+      return sum + (b.isOverdue ? b.totalAmount : b.amount);
+    });
+  }
+
+  // --- 支付逻辑 ---
+
+  Future<void> _handleConfirmPayment() async {
+    if (_selectedId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please select a payment method first"),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    // 模拟网络延迟 (2秒)
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+
+    await _onPaymentSuccess();
+  }
+
+  Future<void> _onPaymentSuccess() async {
+    try {
+      final batch = FirebaseFirestore.instance.batch();
+      for (var bill in _targetBills) {
+        final docRef =
+        FirebaseFirestore.instance.collection('bills').doc(bill.id);
+        batch.update(docRef, {
+          'status': 'paid',
+          'paidAt': FieldValue.serverTimestamp(),
+          'paymentMethod': _selectedName ?? 'Unknown Method',
+        });
+      }
+      await batch.commit();
+
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+
+      // 弹出支付成功
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => ClassicalDialog(
+          title: 'Payment Successful',
+          content:
+          'Paid RM ${_totalAmountToPay.toStringAsFixed(2)} using $_selectedName.\nThank you!',
+          confirmText: 'Done',
+          onConfirm: () {
+            Navigator.of(context).pop(); // 关弹窗
+            Navigator.of(context).pop(); // 退出支付页面
+          },
+        ),
+      );
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showErrorDialog(e.toString());
+    }
+  }
+
+  void _showErrorDialog(String msg) {
+    showDialog(
+      context: context,
+      builder: (context) => ClassicalDialog(
+        title: 'Error',
+        content: msg,
+        confirmText: 'Close',
+        onConfirm: () => Navigator.of(context).pop(),
+      ),
+    );
+  }
+
+  // --- UI 构建 ---
 
   @override
   Widget build(BuildContext context) {
-    final isMultiple = widget.bills != null;
+    final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
+      extendBodyBehindAppBar: true, // 让背景延伸到 AppBar 后面
       appBar: AppBar(
-        title: Text(isMultiple ? 'pay_all_bills'.tr() : 'payment'.tr()),
+        title: const Text('Checkout', style: TextStyle(color: Colors.white)),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 账单信息卡片
-            Card(
-              elevation: 0,
-              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
-              child: Padding(
+      body: Container(
+        // 全局绿色渐变背景，衬托玻璃效果
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF1B5E20), // 深绿
+              Color(0xFF4CAF50), // 中绿
+              Color(0xFFA5D6A7), // 浅绿
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // 1. 顶部金额展示区 (玻璃卡片)
+              Padding(
                 padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isMultiple ? 'bills_summary'.tr() : 'bill_details'.tr(),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (isMultiple) ...[
-                      Text(
-                        '${'total_bills'.tr()}: ${widget.bills!.length}',
-                        style: Theme.of(context).textTheme.bodyLarge,
+                child: GlassContainer(
+                  borderRadius: BorderRadius.circular(24),
+                  opacity: 0.15,
+                  child: Column(
+                    children: [
+                      const Text(
+                        "Total Amount to Pay",
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
                       const SizedBox(height: 8),
-                    ] else ...[
                       Text(
-                        widget.bill.title,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      if (widget.bill.description.isNotEmpty)
-                        Text(
-                          widget.bill.description,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey.shade600,
-                              ),
+                        "RM ${_totalAmountToPay.toStringAsFixed(2)}",
+                        style: const TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 1,
                         ),
+                      ),
                       const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          "${_targetBills.length} bill(s) selected",
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 12),
+                        ),
+                      ),
                     ],
-                    const Divider(),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'total_amount'.tr(),
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        Text(
-                          'RM ${_totalAmount.toStringAsFixed(2)}',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
 
-            // 支付方式选择
-            Text(
-              'select_payment_method'.tr(),
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            ..._paymentMethods.map((method) {
-              final isSelected = _selectedPaymentMethod == method['id'];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                    color: isSelected
-                        ? (method['color'] as Color)
-                        : Colors.grey.shade300,
-                    width: isSelected ? 2 : 1,
-                  ),
-                ),
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _selectedPaymentMethod = method['id'];
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: (method['color'] as Color).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            method['icon'],
-                            color: method['color'],
-                            size: 28,
-                          ),
+              // 2. 支付方式列表
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SectionTitle(title: "CREDIT / DEBIT CARDS"),
+                      const SizedBox(height: 12),
+
+                      // Add Card 按钮
+                      _buildAddCardButton(context),
+
+                      const SizedBox(height: 16),
+
+                      // Firestore 监听用户卡片
+                      if (user != null)
+                        StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(user.uid)
+                              .collection('payment_methods')
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasError) {
+                              return const Text("Error loading cards",
+                                  style: TextStyle(color: Colors.white70));
+                            }
+                            if (!snapshot.hasData) {
+                              return const Center(
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white));
+                            }
+
+                            final docs = snapshot.data!.docs;
+                            return Column(
+                              children: docs.map((doc) {
+                                final data =
+                                doc.data() as Map<String, dynamic>;
+                                final card = PaymentMethodModel.fromMap(
+                                    data, doc.id);
+                                return _buildPaymentOptionCard(
+                                  id: card.id,
+                                  name: "${card.type} •••• ${card.last4}",
+                                  icon: Icons.credit_card,
+                                  iconColor: card.type == 'Visa'
+                                      ? Colors.blueAccent
+                                      : Colors.orangeAccent,
+                                  subtitle: card.holderName,
+                                );
+                              }).toList(),
+                            );
+                          },
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                method['name'],
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                method['description'],
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Colors.grey.shade600,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (isSelected)
-                          Icon(
-                            Icons.check_circle,
-                            color: method['color'],
-                            size: 28,
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }),
-            const SizedBox(height: 32),
 
-            // 支付按钮
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: FilledButton(
-                onPressed: _selectedPaymentMethod == null || _isProcessing
-                    ? null
-                    : () => _processPayment(),
-                style: FilledButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isProcessing
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(_processingStatus ?? 'processing'.tr()),
-                        ],
-                      )
-                    : Text('pay_now'.tr()),
-              ),
-            ),
-            const SizedBox(height: 16),
+                      const SizedBox(height: 24),
+                      const SectionTitle(title: "E-WALLETS & OTHERS"),
+                      const SizedBox(height: 12),
 
-            // 安全提示
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.lock_outline, color: Colors.blue.shade700, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'secure_payment_notice'.tr(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue.shade900,
+                      // 预置的常用支付方式
+                      _buildPaymentOptionCard(
+                        id: 'grab',
+                        name: 'GrabPay',
+                        icon: Icons.local_taxi,
+                        iconColor: Colors.greenAccent,
+                        subtitle: 'Linked: 012-*** 8888',
                       ),
-                    ),
+                      _buildPaymentOptionCard(
+                        id: 'tng',
+                        name: 'Touch \'n Go eWallet',
+                        icon: Icons.touch_app,
+                        iconColor: Colors.blue,
+                        subtitle: 'Balance: RM 500.00',
+                      ),
+                      _buildPaymentOptionCard(
+                        id: 'paypal',
+                        name: 'PayPal',
+                        icon: Icons.payment,
+                        iconColor: Colors.indigoAccent,
+                        subtitle: 'user@example.com',
+                      ),
+
+                      const SizedBox(height: 100), // 底部留白给按钮
+                    ],
                   ),
-                ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+
+      // 底部确认按钮区
+      bottomSheet: Container(
+        color: Colors.transparent, // 或者是背景色
+        child: GlassContainer(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          opacity: 0.9, // 底部背景稍微实一点，看得清按钮
+          color: Colors.white,
+          padding: const EdgeInsets.all(20),
+          child: SafeArea(
+            child: SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _handleConfirmPayment,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E7D32),
+                  foregroundColor: Colors.white,
+                  elevation: 5,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2),
+                )
+                    : Text(
+                  _selectedId == null
+                      ? "Select Payment Method"
+                      : "Confirm Payment",
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _processPayment() async {
-    if (_selectedPaymentMethod == null) return;
+  // --- 组件构建 ---
 
-    // 特殊处理银行转账
-    if (_selectedPaymentMethod == 'bank_transfer') {
-      await _handleBankTransfer();
-      return;
-    }
-
-    setState(() {
-      _isProcessing = true;
-      _processingStatus = 'connecting'.tr();
-    });
-
-    // 模拟连接支付网关
-    await Future.delayed(const Duration(seconds: 1));
-    if (!mounted) return;
-
-    setState(() {
-      _processingStatus = 'processing_payment'.tr();
-    });
-
-    // 模拟支付处理
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
-
-    // 创建支付记录
-    final now = DateTime.now();
-    final transactionId = 'TXN${now.millisecondsSinceEpoch}';
-
-    if (widget.bills != null) {
-      // 批量支付
-      for (final bill in widget.bills!) {
-        final payment = PaymentModel(
-          id: 'pay_${now.millisecondsSinceEpoch}_${bill.id}',
-          userId: MockData.currentUser!.id,
-          billId: bill.id,
-          amount: bill.amount,
-          paymentDate: now,
-          paymentMethod: _selectedPaymentMethod!,
-          transactionId: transactionId,
-          status: 'success',
-        );
-
-        // 添加到支付记录
-        MockData.payments.add(payment);
-
-        // 更新账单状态（本地）
-        final billIndex = MockData.bills.indexWhere((b) => b.id == bill.id);
-        if (billIndex != -1) {
-          MockData.bills[billIndex] = bill.copyWith(
-            status: 'paid',
-            paymentId: payment.id,
-          );
-        }
-
-        // Persist payment and bill status to Firestore
-        try {
-          final createdPaymentId = await FirestoreService.createPayment(payment.toMap());
-          await FirestoreService.updateBillStatus(bill.id, 'paid', paymentId: createdPaymentId);
-        } catch (e) {
-          // Log error but don't crash the UI flow
-          debugPrint('Error saving payment/bill status to Firestore for bill ${bill.id}: $e');
-        }
-      }
-    } else {
-      // 单个支付
-      final payment = PaymentModel(
-        id: 'pay_${now.millisecondsSinceEpoch}',
-        userId: MockData.currentUser!.id,
-        billId: widget.bill.id,
-        amount: widget.bill.amount,
-        paymentDate: now,
-        paymentMethod: _selectedPaymentMethod!,
-        transactionId: transactionId,
-        status: 'success',
-      );
-
-      // 添加到支付记录（本地）
-      MockData.payments.add(payment);
-
-      // 更新账单状态（本地）
-      final billIndex = MockData.bills.indexWhere((b) => b.id == widget.bill.id);
-      if (billIndex != -1) {
-        MockData.bills[billIndex] = widget.bill.copyWith(
-          status: 'paid',
-          paymentId: payment.id,
-        );
-      }
-
-      // Persist payment and bill status to Firestore
-      try {
-        final createdPaymentId = await FirestoreService.createPayment(payment.toMap());
-        await FirestoreService.updateBillStatus(widget.bill.id, 'paid', paymentId: createdPaymentId);
-      } catch (e) {
-        debugPrint('Error saving payment/bill status to Firestore for bill ${widget.bill.id}: $e');
-      }
-    }
-
-    setState(() {
-      _processingStatus = 'payment_successful'.tr();
-    });
-
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-
-    // 显示成功页面
-    _showSuccessDialog();
-  }
-
-  Future<void> _handleBankTransfer() async {
-    final currentUser = MockData.currentUser;
-    if (currentUser == null) return;
-
-    // 检查用户是否有银行信息
-    final banksSnapshot = await FirestoreService.getUserBanksStream(currentUser.id).first;
-    final hasBanks = banksSnapshot.isNotEmpty;
-
-    if (!hasBanks) {
-      // 用户没有银行信息，显示提示并跳转到银行管理页面
-      final shouldAddBank = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('No Payment Method'),
-          content: const Text(
-            'You haven\'t added any bank accounts for payment. Would you like to add one now?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Add Bank Account'),
-            ),
-          ],
-        ),
-      );
-
-      if (shouldAddBank == true) {
-        // 跳转到银行管理页面
-        await Navigator.pushNamed(context, AppRoutes.manageBanks);
-        // 返回后重新检查
-        if (mounted) {
-          await _handleBankTransfer();
-        }
-      }
-    } else {
-      // 用户有银行信息，跳转到银行支付界面
-      await Navigator.pushNamed(
-        context,
-        AppRoutes.bankTransfer,
-        arguments: {
-          'bill': widget.bill,
-          'bills': widget.bills,
-        },
-      ).then((_) {
-        // 支付完成后返回到账单页面
-        if (mounted) {
-          Navigator.pop(context);
-        }
-      });
-    }
-  }
-
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.check_circle,
-                size: 60,
-                color: Colors.green.shade700,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'payment_successful'.tr(),
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'RM ${_totalAmount.toStringAsFixed(2)}',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'transaction_completed'.tr(),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: () {
-                Navigator.pop(context); // 关闭对话框
-                Navigator.pop(context); // 返回上一页
-                // 刷新页面
-                if (Navigator.canPop(context)) {
-                  Navigator.pop(context);
-                }
-              },
-              child: Text('done'.tr()),
+  // 1. Add Card 按钮 (玻璃风格)
+  Widget _buildAddCardButton(BuildContext context) {
+    return GlassContainer(
+      color: Colors.white,
+      opacity: 0.15,
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        // 关键逻辑：跳转到路由表中定义的管理页面
+        Navigator.pushNamed(context, AppRoutes.managePaymentMethods);
+      },
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          Icon(Icons.add_circle_outline, color: Colors.white),
+          SizedBox(width: 8),
+          Text(
+            "Add New Card",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              fontSize: 16,
             ),
           ),
         ],
       ),
     );
   }
+
+  // 2. 支付选项卡片 (玻璃风格 + 选中状态)
+  Widget _buildPaymentOptionCard({
+    required String id,
+    required String name,
+    required IconData icon,
+    required Color iconColor,
+    String? subtitle,
+  }) {
+    final isSelected = _selectedId == id;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassContainer(
+        // 选中时变亮一点，未选中时暗一点
+        color: isSelected ? Colors.white : Colors.white.withOpacity(0.5),
+        opacity: isSelected ? 0.25 : 0.1,
+        borderRadius: BorderRadius.circular(16),
+        // 选中时添加绿色边框
+        onTap: () {
+          setState(() {
+            _selectedId = id;
+            _selectedName = name;
+          });
+        },
+        child: Row(
+          children: [
+            // 图标容器
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            const SizedBox(width: 16),
+
+            // 文本信息
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.white, // 深色背景用白字
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // 选中对号
+            if (isSelected)
+              const Icon(Icons.check_circle, color: Colors.white, size: 28)
+            else
+              Icon(Icons.circle_outlined,
+                  color: Colors.white.withOpacity(0.3), size: 28),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
+// 辅助标题组件
+class SectionTitle extends StatelessWidget {
+  final String title;
+  const SectionTitle({super.key, required this.title});
 
-
-
-
-
-
-
-
-
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+        color: Colors.white.withOpacity(0.6),
+        letterSpacing: 1.2,
+      ),
+    );
+  }
+}

@@ -13,11 +13,15 @@ import 'screens/payment_screen.dart';
 import 'models/announcement_model.dart';
 import 'models/bill_model.dart';
 import 'services/data_migration_service.dart';
- 
+import 'package:flutter_stripe/flutter_stripe.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // 初始化 Stripe
+  Stripe.publishableKey = 'pk_test_51SiB7S9Y9Dc98NLd8oSIMOoKj83KtADaQuGf24ClyjoVmg6teHglsdRHQaZlsn9tVi1QhhMkSEZ9dNPUYW2iVqqE009QlibYjC'; // 您的 Stripe 公钥
+  await Stripe.instance.applySettings();
+
   // 初始化 Firebase
   // 使用超时和错误处理，防止初始化在网络或配置问题时无限等待
   try {
