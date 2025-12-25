@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
-import '../widgets/keyboard_text_field.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -148,7 +147,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     const SizedBox(height: 48),
 
                     // Current Password Field
-                    KeyboardTextField(
+                    TextFormField(
                       controller: _currentPasswordController,
                       obscureText: !_isCurrentPasswordVisible,
                       decoration: InputDecoration(
@@ -182,7 +181,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     const SizedBox(height: 16),
 
                     // New Password Field
-                    KeyboardTextField(
+                    TextFormField(
                       controller: _newPasswordController,
                       obscureText: !_isNewPasswordVisible,
                       decoration: InputDecoration(
@@ -219,7 +218,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     const SizedBox(height: 16),
 
                     // Confirm New Password Field
-                    KeyboardTextField(
+                    TextFormField(
                       controller: _confirmPasswordController,
                       obscureText: !_isConfirmPasswordVisible,
                       decoration: InputDecoration(

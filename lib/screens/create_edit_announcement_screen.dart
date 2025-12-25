@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../services/firestore_service.dart';
 import '../providers/app_provider.dart';
-import '../widgets/keyboard_text_field.dart';
 
 class CreateEditAnnouncementScreen extends StatefulWidget {
   final bool isEdit;
@@ -195,20 +194,20 @@ class _CreateEditAnnouncementScreenState extends State<CreateEditAnnouncementScr
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              KeyboardTextField(
+              TextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(labelText: 'Title'),
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Title is required' : null,
               ),
               const SizedBox(height: 12),
-              KeyboardTextField(
+              TextFormField(
                 controller: _summaryController,
                 decoration: const InputDecoration(labelText: 'Summary'),
                 maxLines: 2,
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Summary is required' : null,
               ),
               const SizedBox(height: 12),
-              KeyboardTextField(
+              TextFormField(
                 controller: _contentController,
                 decoration: const InputDecoration(labelText: 'Content'),
                 maxLines: 6,

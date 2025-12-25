@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../routes.dart';
 import '../providers/app_provider.dart';
 import '../models/user_model.dart';
-import '../widgets/keyboard_text_field.dart';
 import '../widgets/classical_dialog.dart'; // 确保引入了您的通用弹窗组件
 
 class LoginScreen extends StatefulWidget {
@@ -251,7 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 48),
-                    KeyboardTextField(
+                    TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
@@ -271,7 +270,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    KeyboardTextField(
+                    TextFormField(
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
                       decoration: InputDecoration(

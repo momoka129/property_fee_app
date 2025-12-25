@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/user_model.dart';
-import '../widgets/keyboard_text_field.dart';
 import '../routes.dart';
 import '../services/firestore_service.dart';
 
@@ -165,13 +164,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    KeyboardTextField(
+                    TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(labelText: 'Full name', prefixIcon: Icon(Icons.person)),
                       validator: (v) => (v == null || v.isEmpty) ? 'Please enter your name' : null,
                     ),
                     const SizedBox(height: 12),
-                    KeyboardTextField(
+                    TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined)),
@@ -182,7 +181,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ),
                     const SizedBox(height: 12),
-                    KeyboardTextField(
+                    TextFormField(
                       controller: _passwordController,
                       obscureText: true,
                       decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock_outline)),
@@ -193,7 +192,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ),
                     const SizedBox(height: 12),
-                    KeyboardTextField(
+                    TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
                       decoration: const InputDecoration(labelText: 'Phone', prefixIcon: Icon(Icons.phone)),
