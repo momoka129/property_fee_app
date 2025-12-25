@@ -107,7 +107,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(appProvider.getLocalizedText('change_password')),
+        title: Text('Change Password'),
       ),
       body: SafeArea(
         child: Center(
@@ -131,7 +131,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
                     // Title
                     Text(
-                      appProvider.getLocalizedText('change_password'),
+                      'Change Password',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.bold,
@@ -266,7 +266,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                                   color: Colors.white,
                                 ),
                               )
-                            : Text(appProvider.getLocalizedText('change_password')),
+                            : Text('Change Password'),
                       ),
                     ),
                   ],

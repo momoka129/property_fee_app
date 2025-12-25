@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
-import 'package:easy_localization/easy_localization.dart';
 import 'dart:io';
 import '../data/mock_data.dart';
 import '../models/user_model.dart';
@@ -80,17 +79,17 @@ class _HomeScreenState extends State<HomeScreen> {
               NavigationDestination(
                 icon: const Icon(Icons.home_outlined),
                 selectedIcon: const Icon(Icons.home),
-                label: appProvider.getLocalizedText('home'),
+                label: 'Home',
               ),
               NavigationDestination(
                 icon: const Icon(Icons.apps_outlined),
                 selectedIcon: const Icon(Icons.apps),
-                label: appProvider.getLocalizedText('services'),
+                label: 'Services',
               ),
               NavigationDestination(
                 icon: const Icon(Icons.person_outline),
                 selectedIcon: const Icon(Icons.person),
-                label: appProvider.getLocalizedText('profile'),
+                label: 'Profile',
               ),
             ],
           ),
@@ -153,14 +152,14 @@ class _DashboardPageState extends State<_DashboardPage> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Text(
-                        '${appProvider.getLocalizedText('home')}, ${user.name.split(' ').first}! 👋',
+                        'Home, ${user.name.split(' ').first}! 👋',
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${appProvider.getLocalizedText('unit')} ${user.propertySimpleAddress}',
+                        'Unit ${user.propertySimpleAddress}',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Colors.grey.shade700,
                             ),
@@ -259,11 +258,11 @@ class _DashboardPageState extends State<_DashboardPage> {
             child: Row(
               children: [
                 Expanded(
-                  child: _buildStatCard(context, appProvider.getLocalizedText('unpaid_bills'), '...', Icons.receipt_long, Colors.orange, false),
+                  child: _buildStatCard(context, 'Unpaid Bills', '...', Icons.receipt_long, Colors.orange, false),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _buildStatCard(context, appProvider.getLocalizedText('packages'), '...', Icons.inventory_2, Colors.blue, false),
+                  child: _buildStatCard(context, 'Packages', '...', Icons.inventory_2, Colors.blue, false),
                 ),
               ],
             ),
@@ -297,7 +296,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                       Expanded(
                         child: _buildStatCard(
                           context,
-                          appProvider.getLocalizedText('unpaid_bills'),
+                          'Unpaid Bills',
                           finalBillsSnapshot.connectionState == ConnectionState.waiting
                               ? '...'
                               : 'RM ${unpaidTotal.toStringAsFixed(0)}',
@@ -314,7 +313,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                       Expanded(
                         child: _buildStatCard(
                           context,
-                          appProvider.getLocalizedText('packages'),
+                          'Packages',
                           packagesSnapshot.connectionState == ConnectionState.waiting ? '...' : '${readyPackages.length}',
                           Icons.inventory_2,
                           Colors.blue,
@@ -617,7 +616,7 @@ class _DashboardPageState extends State<_DashboardPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            appProvider.getLocalizedText('quick_access'),
+            'Quick Access',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -761,7 +760,7 @@ class _ServicesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(appProvider.getLocalizedText('services')),
+        title: Text('Services'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -771,7 +770,7 @@ class _ServicesPage extends StatelessWidget {
             'Financial',
             Icons.attach_money,
             [
-              {'icon': Icons.receipt_long, 'label': appProvider.getLocalizedText('bills'), 'route': AppRoutes.bills},
+              {'icon': Icons.receipt_long, 'label': 'Bills', 'route': AppRoutes.bills},
             ],
             appProvider,
           ),
@@ -781,7 +780,7 @@ class _ServicesPage extends StatelessWidget {
             'Property Management',
             Icons.home_work,
             [
-              {'icon': Icons.build, 'label': appProvider.getLocalizedText('repairs'), 'route': AppRoutes.repairs},
+              {'icon': Icons.build, 'label': 'Repairs', 'route': AppRoutes.repairs},
 
             ],
             appProvider,
@@ -792,8 +791,8 @@ class _ServicesPage extends StatelessWidget {
             'Community',
             Icons.groups,
             [
-              {'icon': Icons.campaign, 'label': appProvider.getLocalizedText('announcements'), 'route': AppRoutes.announcements},
-              // {'icon': Icons.pool, 'label': appProvider.getLocalizedText('amenities'), 'route': AppRoutes.amenities}, // TODO: 待实现
+              {'icon': Icons.campaign, 'label': 'Announcements', 'route': AppRoutes.announcements},
+              // {'icon': Icons.pool, 'label': 'Amenities', 'route': AppRoutes.amenities}, // TODO: 待实现
             ],
             appProvider,
           ),
@@ -803,8 +802,8 @@ class _ServicesPage extends StatelessWidget {
             'Services',
             Icons.room_service,
             [
-              // {'icon': Icons.people, 'label': appProvider.getLocalizedText('visitors'), 'route': AppRoutes.visitors}, // TODO: 待实现
-              {'icon': Icons.inventory_2, 'label': appProvider.getLocalizedText('packages'), 'route': AppRoutes.packages},
+              // {'icon': Icons.people, 'label': 'Visitors', 'route': AppRoutes.visitors}, // TODO: 待实现
+              {'icon': Icons.inventory_2, 'label': 'Packages', 'route': AppRoutes.packages},
             ],
             appProvider,
           ),
@@ -952,7 +951,7 @@ class _ProfilePage extends StatelessWidget {
           extendBodyBehindAppBar: true, // 让背景延伸到 AppBar 后面
           appBar: AppBar(
             title: Text(
-              appProvider.getLocalizedText('profile'),
+              'Profile',
               style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
             ),
             backgroundColor: Colors.transparent, // 透明背景
@@ -1057,7 +1056,7 @@ class _ProfilePage extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(bottom: 16),
                           child: Text(
-                            appProvider.getLocalizedText('property_information'),
+                            'Property Information',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -1065,9 +1064,9 @@ class _ProfilePage extends StatelessWidget {
                             ),
                           ),
                         ),
-                        _buildInfoRow(context, Icons.home_rounded, appProvider.getLocalizedText('address'), currentUser.propertySimpleAddress),
+                        _buildInfoRow(context, Icons.home_rounded, 'Address', currentUser.propertySimpleAddress),
                         const SizedBox(height: 12),
-                        _buildInfoRow(context, Icons.phone_rounded, appProvider.getLocalizedText('phone'), currentUser.phoneNumber ?? 'Not set'),
+                        _buildInfoRow(context, Icons.phone_rounded, 'Phone', currentUser.phoneNumber ?? 'Not set'),
                       ],
                     ),
                   ),
@@ -1083,23 +1082,15 @@ class _ProfilePage extends StatelessWidget {
                         _buildGlassListTile(
                           context,
                           icon: Icons.edit_outlined,
-                          title: appProvider.getLocalizedText('edit_profile'),
+                          title: 'Edit Profile',
                           onTap: () => Navigator.pushNamed(context, AppRoutes.editProfile),
                         ),
                         _buildDivider(),
                         _buildGlassListTile(
                           context,
                           icon: Icons.lock_outline_rounded,
-                          title: appProvider.getLocalizedText('change_password'),
+                          title: 'Change Password',
                           onTap: () => Navigator.pushNamed(context, AppRoutes.changePassword),
-                        ),
-                        _buildDivider(),
-                        _buildGlassListTile(
-                          context,
-                          icon: Icons.language_rounded,
-                          title: appProvider.getLocalizedText('language'),
-                          subtitle: _getLanguageName(context.locale.languageCode),
-                          onTap: () => _showLanguageDialog(context),
                         ),
                         _buildDivider(),
                         _buildGlassListTile(
@@ -1125,14 +1116,14 @@ class _ProfilePage extends StatelessWidget {
                         _buildGlassListTile(
                           context,
                           icon: Icons.help_outline_rounded,
-                          title: appProvider.getLocalizedText('help_support'),
+                          title: 'Help & Support',
                           onTap: () => Navigator.pushNamed(context, AppRoutes.helpSupport),
                         ),
                         _buildDivider(),
                         _buildGlassListTile(
                           context,
                           icon: Icons.info_outline_rounded,
-                          title: appProvider.getLocalizedText('about'),
+                          title: 'About',
                           subtitle: 'Version 1.0.0',
                           onTap: () => Navigator.pushNamed(context, AppRoutes.about),
                         ),
@@ -1159,58 +1150,5 @@ class _ProfilePage extends StatelessWidget {
     );
   }
 
-  void _showLanguageDialog(BuildContext context) {
-    final supportedLocales = context.supportedLocales;
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Select Language'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: supportedLocales.map((locale) {
-              return ListTile(
-                title: Text(_getLanguageName(locale.languageCode)),
-                leading: Radio<String>(
-                  value: locale.languageCode,
-                  groupValue: context.locale.languageCode,
-                  onChanged: (String? value) {
-                    if (value != null) {
-                      context.setLocale(Locale(value));
-                      Navigator.of(context).pop();
-                    }
-                  },
-                ),
-                onTap: () {
-                  context.setLocale(locale);
-                  Navigator.of(context).pop();
-                },
-              );
-            }).toList(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
-  // 放在 _ProfilePage 类内部的底部
-
-  String _getLanguageName(String code) {
-    switch (code) {
-      case 'en':
-        return 'English';
-      case 'zh':
-        return '中文';
-      case 'ms':
-        return 'Bahasa Melayu';
-      default:
-        return code;
-    }
-  }
 }

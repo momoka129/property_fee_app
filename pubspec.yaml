@@ -42,8 +42,7 @@ dependencies:
   provider: ^6.1.1
   intl: ^0.20.2
   shared_preferences: ^2.2.2
-  easy_localization: ^3.0.4
-  
+
   # UI enhancements
   flutter_staggered_grid_view: ^0.7.0
   cached_network_image: ^3.3.1
@@ -88,9 +87,8 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   
-  # Assets for localization
+  # Assets
   assets:
-    - assets/translations/
     - assets/images/
     
 

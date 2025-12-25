@@ -106,9 +106,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.read<AppProvider>().getLocalizedText('save') + ' ' +
-                         context.read<AppProvider>().getLocalizedText('name') + ' ' +
-                         context.read<AppProvider>().getLocalizedText('confirm') + '!'),
+            content: Text('Save name confirm!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -132,7 +130,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(appProvider.getLocalizedText('edit_profile')),
+        title: Text('Edit Profile'),
         actions: [
           TextButton(
             onPressed: _saveProfile,
@@ -178,7 +176,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             TextFormField(
               controller: _nameController,
               decoration: InputDecoration(
-                labelText: '${appProvider.getLocalizedText('name')} *',
+                labelText: 'Name *',
                 prefixIcon: const Icon(Icons.person_outline),
                 border: const OutlineInputBorder(),
               ),
@@ -226,7 +224,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               height: 50,
               child: FilledButton(
                 onPressed: _saveProfile,
-                child: Text(appProvider.getLocalizedText('save')),
+                child: Text('Save'),
               ),
             ),
           ],

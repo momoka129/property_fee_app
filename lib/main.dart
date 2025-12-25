@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'package:easy_localization/easy_localization.dart';
 import 'app_theme.dart';
 import 'routes.dart';
 import 'providers/app_provider.dart';
@@ -47,12 +46,6 @@ void main() async {
     debugPrint('Firebase.initializeApp failed: $e\n$st');
   }
 
-  // 初始化 easy_localization（带超时）
-  try {
-    await EasyLocalization.ensureInitialized().timeout(const Duration(seconds: 5));
-  } catch (e, st) {
-    debugPrint('EasyLocalization.ensureInitialized failed: $e\n$st');
-  }
   
   
   // 设置状态栏样式
@@ -63,14 +56,7 @@ void main() async {
     ),
   );
 
-  runApp(
-    EasyLocalization(
-      supportedLocales: const [Locale('en'), Locale('zh'), Locale('ms')],
-      path: 'assets/translations',
-      fallbackLocale: const Locale('en'),
-      child: const PropertyFeeApp(),
-    ),
-  );
+  runApp(const PropertyFeeApp());
 }
 
 class PropertyFeeApp extends StatelessWidget {
@@ -85,9 +71,6 @@ class PropertyFeeApp extends StatelessWidget {
           return MaterialApp(
             title: 'Smart Property',
             theme: AppTheme.light(),
-            localizationsDelegates: context.localizationDelegates,
-            supportedLocales: context.supportedLocales,
-            locale: context.locale,
             routes: AppRoutes.map,
             onGenerateRoute: (settings) {
               if (settings.name == AppRoutes.announcementDetail) {
