@@ -61,9 +61,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
   }
 
   // --- 顶部清除所有未读的确认弹窗 ---
-  void _showMarkAllReadDialog() {
+  void _showMarkAllReadDialog(List<UserNotificationModel> unreadNotifications) {
     final userId = _currentUserId;
     if (userId == null) return;
+
+    // 检查是否有未读通知
+    if (unreadNotifications.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => ClassicalDialog(
+          title: 'No unread notifications',
+          content: 'All your notifications are already read.',
+          confirmText: 'OK',
+          onConfirm: () => Navigator.pop(context),
+        ),
+      );
+      return;
+    }
 
     // 这个操作仍然需要确认，所以保留 cancelText
     showDialog(
@@ -82,6 +96,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
     // 如果没有用户登录，显示 loading 或空
@@ -89,61 +104,67 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
-      appBar: AppBar(
-        title: const Text(
-          'Notifications',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.done_all, color: Colors.black87),
-            tooltip: 'Mark all as read',
-            onPressed: _showMarkAllReadDialog,
+    return StreamBuilder<List<UserNotificationModel>>(
+      stream: _notificationsStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: Color(0xFFF9F9F9),
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: const Color(0xFFF9F9F9),
+            body: Center(child: Text('Error: ${snapshot.error}')),
+          );
+        }
+
+        final allNotifications = snapshot.data ?? [];
+        final unread = allNotifications.where((n) => !n.isRead).toList();
+        final history = allNotifications.where((n) => n.isRead).toList();
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF9F9F9),
+          appBar: AppBar(
+            title: const Text(
+              'Notifications',
+              style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: Colors.white,
+            elevation: 0,
+            centerTitle: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.done_all, color: Colors.black87),
+                tooltip: 'Mark all as read',
+                onPressed: () => _showMarkAllReadDialog(unread),
+              ),
+            ],
+            bottom: TabBar(
+              controller: _tabController,
+              labelColor: const Color(0xFF4F46E5),
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: const Color(0xFF4F46E5),
+              tabs: const [
+                Tab(text: 'Unread'),
+                Tab(text: 'History'),
+              ],
+            ),
           ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: const Color(0xFF4F46E5),
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: const Color(0xFF4F46E5),
-          tabs: const [
-            Tab(text: 'Unread'),
-            Tab(text: 'History'),
-          ],
-        ),
-      ),
-      body: StreamBuilder<List<UserNotificationModel>>(
-        stream: _notificationsStream,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-
-          final allNotifications = snapshot.data ?? [];
-          final unread = allNotifications.where((n) => !n.isRead).toList();
-          final history = allNotifications.where((n) => n.isRead).toList();
-
-          return TabBarView(
+          body: TabBarView(
             controller: _tabController,
             children: [
               _buildNotificationList(unread, isEmptyMessage: 'No new notifications'),
               _buildNotificationList(history, isEmptyMessage: 'No history'),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
