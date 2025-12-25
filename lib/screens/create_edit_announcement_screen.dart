@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../services/firestore_service.dart';
@@ -33,6 +36,8 @@ class _CreateEditAnnouncementScreenState extends State<CreateEditAnnouncementScr
   DateTime _publishedAt = DateTime.now();
   DateTime? _expireAt;
   bool _pinned = false;
+  String? _imageUrl;
+  bool _uploadingImage = false;
 
   static const categories = ['maintenance', 'billing', 'security', 'event', 'policy', 'emergency'];
   static const priorities = ['low', 'medium', 'high'];
@@ -52,6 +57,10 @@ class _CreateEditAnnouncementScreenState extends State<CreateEditAnnouncementScr
       _publishedAt = init['publishedAt'] is DateTime ? init['publishedAt'] as DateTime : DateTime.now();
       _expireAt = init['expireAt'] is DateTime ? init['expireAt'] as DateTime : null;
       _pinned = init['isPinned'] ?? false;
+      // preload existing image if editing
+      if (init['image'] != null) {
+        _imageUrl = init['image'].toString();
+      }
     }
   }
 
@@ -93,6 +102,46 @@ class _CreateEditAnnouncementScreenState extends State<CreateEditAnnouncementScr
     });
   }
 
+  Future<void> _pickImage() async {
+    try {
+      final XFile? picked = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1200, imageQuality: 80);
+      if (picked == null) return;
+      await _uploadImage(picked);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Image pick failed: $e')));
+    }
+  }
+
+  Future<void> _uploadImage(XFile picked) async {
+    setState(() {
+      _uploadingImage = true;
+    });
+    try {
+      final file = File(picked.path);
+      final fileName = 'announcements/${DateTime.now().millisecondsSinceEpoch}_${picked.name}';
+      final ref = FirebaseStorage.instance.ref().child(fileName);
+      final uploadTask = ref.putFile(file);
+      await uploadTask.whenComplete(() {});
+      final url = await ref.getDownloadURL();
+      setState(() {
+        _imageUrl = url;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image uploaded')));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Image upload failed: $e')));
+    } finally {
+      setState(() {
+        _uploadingImage = false;
+      });
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _imageUrl = null;
+    });
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     // expireAt must be null or > publishedAt
@@ -116,7 +165,7 @@ class _CreateEditAnnouncementScreenState extends State<CreateEditAnnouncementScr
       'expireAt': _expireAt,
       'author': authorName,
       'isPinned': _pinned,
-      'image': null,
+      'image': _imageUrl,
     };
 
     try {
@@ -166,6 +215,44 @@ class _CreateEditAnnouncementScreenState extends State<CreateEditAnnouncementScr
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Content is required' : null,
               ),
               const SizedBox(height: 12),
+              // Image picker / preview
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Image', style: TextStyle(fontSize: 14)),
+                  const SizedBox(height: 8),
+                  if (_imageUrl != null)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(_imageUrl!, height: 160, width: double.infinity, fit: BoxFit.cover),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            TextButton.icon(onPressed: _uploadingImage ? null : _pickImage, icon: const Icon(Icons.edit), label: const Text('Change')),
+                            const SizedBox(width: 8),
+                            TextButton.icon(onPressed: _removeImage, icon: const Icon(Icons.delete), label: const Text('Remove')),
+                          ],
+                        ),
+                      ],
+                    )
+                  else
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _uploadingImage ? null : _pickImage,
+                          icon: const Icon(Icons.image_outlined),
+                          label: const Text('Choose Image'),
+                        ),
+                        const SizedBox(width: 12),
+                        if (_uploadingImage) const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                      ],
+                    ),
+                ],
+              ),
               Row(
                 children: [
                   Expanded(
