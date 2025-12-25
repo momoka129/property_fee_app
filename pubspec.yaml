@@ -50,6 +50,9 @@ dependencies:
   
   # Image handling
   image_picker: ^1.0.7
+
+  # Pin input for phone number boxes
+  pinput: ^2.3.0
   
   # QR Code
   qr_flutter: ^4.1.0
