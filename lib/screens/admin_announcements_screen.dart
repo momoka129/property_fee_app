@@ -4,127 +4,398 @@ import '../models/announcement_model.dart';
 import '../services/firestore_service.dart';
 import 'create_edit_announcement_screen.dart';
 
-class AdminAnnouncementsScreen extends StatelessWidget {
+class AdminAnnouncementsScreen extends StatefulWidget {
   const AdminAnnouncementsScreen({super.key});
+
+  @override
+  State<AdminAnnouncementsScreen> createState() => _AdminAnnouncementsScreenState();
+}
+
+class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
+  // 基础风格变量
+  final Color bgGradientStart = const Color(0xFFF3F4F6);
+  final Color bgGradientEnd = const Color(0xFFE5E7EB);
+  final Color cardColor = Colors.white;
+  final BorderRadius kCardRadius = BorderRadius.circular(20);
+  final List<BoxShadow> kCardShadow = [
+    BoxShadow(
+      color: const Color(0xFF1F2937).withOpacity(0.06),
+      blurRadius: 15,
+      offset: const Offset(0, 5),
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manage Announcements'),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [bgGradientStart, bgGradientEnd],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(context),
+              Expanded(
+                child: _buildAnnouncementList(),
+              ),
+            ],
+          ),
+        ),
       ),
-      body: StreamBuilder<List<AnnouncementModel>>(
-        stream: FirestoreService.announcementsStream(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final items = snapshot.data ?? [];
-          if (items.isEmpty) {
-            return const Center(child: Text('No announcements found.'));
-          }
-          // client-side sort: pinned -> priority (high>medium>low) -> publishedAt desc
-          items.sort((a, b) {
-            final aPinned = a.isPinned ? 1 : 0;
-            final bPinned = b.isPinned ? 1 : 0;
-            if (bPinned != aPinned) return bPinned - aPinned;
-            int priorityValue(String p) {
-              switch (p) {
-                case 'high':
-                  return 3;
-                case 'medium':
-                  return 2;
-                case 'low':
-                  return 1;
-              }
-              return 0;
-            }
-            final pDiff = priorityValue(b.priority) - priorityValue(a.priority);
-            if (pDiff != 0) return pDiff;
-            return b.publishedAt.compareTo(a.publishedAt);
-          });
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              final ann = items[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: ann.isPinned ? const Icon(Icons.push_pin, color: Colors.orange) : null,
-                  title: Text(ann.title),
-                  subtitle: Text('${ann.categoryDisplay} • ${DateFormat('MMM dd, yyyy').format(ann.publishedAt)}'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                          onPressed: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CreateEditAnnouncementScreen(
-                                isEdit: true,
-                                announcementId: ann.id,
-                                initialData: {
-                                  'title': ann.title,
-                                  'summary': '', // model doesn't have summary; leave blank
-                                  'content': ann.content,
-                                  'category': ann.category,
-                                  'priority': ann.priority,
-                                  'status': 'ongoing',
-                                  'publishedAt': ann.publishedAt,
-                                  'expireAt': null,
-                                  'isPinned': ann.isPinned,
-                                  'author': ann.author,
-                                  'image': ann.image,
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () async {
-                          final confirmed = await showDialog<bool>(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: const Text('Delete Announcement'),
-                                  content: const Text('Are you sure you want to delete this announcement?'),
-                                  actions: [
-                                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
-                                  ],
-                                ),
-                              ) ??
-                              false;
-                          if (confirmed) {
-                            await FirestoreService.deleteAnnouncement(ann.id);
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Announcement deleted')));
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const CreateEditAnnouncementScreen(isEdit: false)),
           );
         },
+        backgroundColor: const Color(0xFF4F46E5), // Indigo
+        elevation: 4,
+        icon: const Icon(Icons.campaign_outlined, color: Colors.white),
+        label: const Text('Post News', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }
+
+  // --- 1. 顶部 Header ---
+  Widget _buildHeader(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: () => Navigator.pop(context),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: kCardShadow,
+              ),
+              child: const Icon(Icons.arrow_back_ios_new, size: 18, color: Colors.black87),
+            ),
+          ),
+          const SizedBox(width: 16),
+          const Text(
+            'Announcements',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- 2. 列表构建 ---
+  Widget _buildAnnouncementList() {
+    return StreamBuilder<List<AnnouncementModel>>(
+      stream: FirestoreService.announcementsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final items = snapshot.data ?? [];
+        if (items.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.notifications_off_outlined, size: 64, color: Colors.grey[300]),
+                const SizedBox(height: 16),
+                Text('No announcements posted', style: TextStyle(color: Colors.grey[500])),
+              ],
+            ),
+          );
+        }
+
+        // 排序逻辑 (保留原有逻辑)
+        items.sort((a, b) {
+          final aPinned = a.isPinned ? 1 : 0;
+          final bPinned = b.isPinned ? 1 : 0;
+          if (bPinned != aPinned) return bPinned - aPinned;
+          int priorityValue(String p) {
+            switch (p) {
+              case 'high': return 3;
+              case 'medium': return 2;
+              case 'low': return 1;
+            }
+            return 0;
+          }
+          final pDiff = priorityValue(b.priority) - priorityValue(a.priority);
+          if (pDiff != 0) return pDiff;
+          return b.publishedAt.compareTo(a.publishedAt);
+        });
+
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 80),
+          physics: const BouncingScrollPhysics(),
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 16),
+          itemBuilder: (context, index) {
+            final ann = items[index];
+            return _buildAnnouncementCard(ann);
+          },
+        );
+      },
+    );
+  }
+
+  // --- 3. 绚丽的卡片设计 ---
+  Widget _buildAnnouncementCard(AnnouncementModel ann) {
+    // 获取类别对应的色彩主题
+    final theme = _getCategoryTheme(ann.category);
+    final dateDay = DateFormat('dd').format(ann.publishedAt);
+    final dateMonth = DateFormat('MMM').format(ann.publishedAt);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: kCardRadius,
+        boxShadow: kCardShadow,
+      ),
+      child: ClipRRect(
+        borderRadius: kCardRadius,
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 左侧：日期色块
+              Container(
+                width: 70,
+                decoration: BoxDecoration(
+                  color: theme.color.withOpacity(0.1),
+                  border: Border(right: BorderSide(color: theme.color.withOpacity(0.2))),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      dateDay,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: theme.color,
+                      ),
+                    ),
+                    Text(
+                      dateMonth.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: theme.color.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 右侧：内容区域
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 顶部标签行
+                      Row(
+                        children: [
+                          // 类别标签
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.color,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              ann.categoryDisplay,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          // 置顶图标
+                          if (ann.isPinned)
+                            const Padding(
+                              padding: EdgeInsets.only(right: 8.0),
+                              child: Icon(Icons.push_pin, size: 16, color: Colors.orange),
+                            ),
+                          // 优先级小点 (如果是 High)
+                          if (ann.priority == 'high')
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.red),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'URGENT',
+                                style: TextStyle(fontSize: 8, color: Colors.red, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      // 标题
+                      Text(
+                        ann.title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+
+                      // 内容摘要 (如果有content)
+                      if (ann.content.isNotEmpty)
+                        Text(
+                          ann.content,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                            height: 1.4,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+
+                      const SizedBox(height: 12),
+                      const Divider(height: 1),
+                      const SizedBox(height: 8),
+
+                      // 底部操作区
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          _buildActionButton(
+                            icon: Icons.edit_outlined,
+                            color: Colors.blue,
+                            onTap: () => _navigateToEdit(ann),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildActionButton(
+                            icon: Icons.delete_outline,
+                            color: Colors.red,
+                            onTap: () => _confirmDelete(ann),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({required IconData icon, required Color color, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 18, color: color),
+      ),
+    );
+  }
+
+  // --- 4. 辅助逻辑 ---
+
+  // 根据类别返回颜色主题
+  _CategoryTheme _getCategoryTheme(String category) {
+    switch (category.toLowerCase()) {
+      case 'event':
+        return _CategoryTheme(color: const Color(0xFF8B5CF6)); // Purple
+      case 'maintenance':
+        return _CategoryTheme(color: const Color(0xFFF97316)); // Orange
+      case 'news':
+        return _CategoryTheme(color: const Color(0xFF3B82F6)); // Blue
+      case 'alert':
+      case 'emergency':
+        return _CategoryTheme(color: const Color(0xFFEF4444)); // Red
+      default:
+        return _CategoryTheme(color: const Color(0xFF10B981)); // Green (General)
+    }
+  }
+
+  void _navigateToEdit(AnnouncementModel ann) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreateEditAnnouncementScreen(
+          isEdit: true,
+          announcementId: ann.id,
+          initialData: {
+            'title': ann.title,
+            'summary': '',
+            'content': ann.content,
+            'category': ann.category,
+            'priority': ann.priority,
+            'status': 'ongoing',
+            'publishedAt': ann.publishedAt,
+            'expireAt': null,
+            'isPinned': ann.isPinned,
+            'author': ann.author,
+            'image': ann.image,
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(AnnouncementModel ann) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Announcement'),
+        content: const Text('Are you sure you want to delete this announcement? This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    ) ?? false;
+
+    if (confirmed) {
+      await FirestoreService.deleteAnnouncement(ann.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Announcement deleted'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 }
 
-
+// 简单的辅助类用于传递主题
+class _CategoryTheme {
+  final Color color;
+  _CategoryTheme({required this.color});
+}
