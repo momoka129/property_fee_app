@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/package_model.dart';
 import '../models/user_model.dart';
 import '../services/firestore_service.dart';
+import '../widgets/glass_container.dart';
 
 class AdminPackagesScreen extends StatefulWidget {
   const AdminPackagesScreen({super.key});
@@ -413,66 +414,105 @@ class _AddPackageDialogState extends State<_AddPackageDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Incoming Parcel'),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<UserModel>(
-                decoration: InputDecoration(
-                  labelText: 'Resident',
-                  border: outlineBorder,
-                  enabledBorder: outlineBorder,
-                  prefixIcon: const Icon(Icons.person_outline),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    // 1. 用 Dialog 替换 AlertDialog
+    return Dialog(
+      backgroundColor: Colors.transparent, // 背景透明，否则玻璃效果出不来
+      elevation: 0, // 去掉默认阴影
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24), // 防止贴边
+
+      // 2. 使用你的 GlassContainer
+      child: GlassContainer(
+        opacity: 0.9, // 稍微实一点，保证表单看不晕
+        borderRadius: BorderRadius.circular(24),
+        padding: const EdgeInsets.all(24),
+
+        // 3. 手动用 Column 重新布局：标题 + 表单 + 按钮
+        child: Column(
+          mainAxisSize: MainAxisSize.min, // 也就是 wrap_content
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // --- 标题部分 ---
+            const Text(
+                'Incoming Parcel',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
+            ),
+
+            const SizedBox(height: 20),
+
+            // --- 内容部分 (可滚动) ---
+            Flexible(
+              child: SingleChildScrollView(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      DropdownButtonFormField<UserModel>(
+                        decoration: InputDecoration(
+                          labelText: 'Resident',
+                          border: outlineBorder,
+                          enabledBorder: outlineBorder,
+                          prefixIcon: const Icon(Icons.person_outline),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                        value: _selectedUser,
+                        items: widget.users.map((user) {
+                          return DropdownMenuItem(
+                            value: user,
+                            child: Text(
+                              '${user.name} (${user.propertySimpleAddress})',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) => setState(() => _selectedUser = val),
+                        validator: (val) => val == null ? 'Please select a resident' : null,
+                        isExpanded: true,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildTextField(_courierController, 'Courier (e.g. DHL)', Icons.local_shipping_outlined),
+                      const SizedBox(height: 12),
+                      _buildTextField(_trackingController, 'Tracking Number', Icons.qr_code),
+                      const SizedBox(height: 12),
+                      _buildTextField(_descriptionController, 'Description (e.g. Small Box)', Icons.description_outlined),
+                      const SizedBox(height: 12),
+                      _buildTextField(_locationController, 'Location', Icons.place_outlined),
+                    ],
+                  ),
                 ),
-                value: _selectedUser,
-                items: widget.users.map((user) {
-                  return DropdownMenuItem(
-                    value: user,
-                    child: Text(
-                      '${user.name} (${user.propertySimpleAddress})',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  );
-                }).toList(),
-                onChanged: (val) => setState(() => _selectedUser = val),
-                validator: (val) => val == null ? 'Please select a resident' : null,
-                isExpanded: true,
               ),
-              const SizedBox(height: 12),
-              _buildTextField(_courierController, 'Courier (e.g. DHL)', Icons.local_shipping_outlined),
-              const SizedBox(height: 12),
-              _buildTextField(_trackingController, 'Tracking Number', Icons.qr_code),
-              const SizedBox(height: 12),
-              _buildTextField(_descriptionController, 'Description (e.g. Small Box)', Icons.description_outlined),
-              const SizedBox(height: 12),
-              _buildTextField(_locationController, 'Location', Icons.place_outlined),
-            ],
-          ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // --- 按钮部分 (原本的 actions) ---
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: _isLoading ? null : () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      backgroundColor: const Color(0xFF4F46E5),
+                    ),
+                    onPressed: _isLoading ? null : _submit,
+                    child: _isLoading
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Add Record'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            backgroundColor: const Color(0xFF4F46E5),
-          ),
-          onPressed: _isLoading ? null : _submit,
-          child: _isLoading
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : const Text('Add Record'),
-        ),
-      ],
     );
   }
 

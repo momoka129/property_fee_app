@@ -939,24 +939,30 @@ class _ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
+
+    // 定义背景渐变 (与 Admin 页面保持一致，衬托白色玻璃)
+    final Color bgGradientStart = const Color(0xFFF3F4F6);
+    final Color bgGradientEnd = const Color(0xFFE5E7EB);
+
     return Consumer<AppProvider>(
       builder: (context, appProvider, _) {
         final currentUser = appProvider.currentUser ?? user;
 
         return Scaffold(
-          backgroundColor: Colors.white, // 改为白色背景
+          extendBodyBehindAppBar: true, // 让背景延伸到 AppBar 后面
           appBar: AppBar(
             title: Text(
               appProvider.getLocalizedText('profile'),
-              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold), // 黑色标题
+              style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
             ),
-            backgroundColor: Colors.transparent,
+            backgroundColor: Colors.transparent, // 透明背景
             elevation: 0,
-            iconTheme: const IconThemeData(color: Colors.black), // 黑色图标
+            iconTheme: const IconThemeData(color: Colors.black87),
             actions: [
               IconButton(
-                icon: const Icon(Icons.logout),
+                icon: const Icon(Icons.logout_rounded),
                 onPressed: () {
+                  // 这里也可以加一个 Glass 风格的确认弹窗，逻辑参考 AdminHomeScreen
                   MockData.currentUser = null;
                   appProvider.updateUser(null as UserModel?);
                   Navigator.pushReplacementNamed(context, AppRoutes.login);
@@ -964,163 +970,192 @@ class _ProfilePage extends StatelessWidget {
               ),
             ],
           ),
-          body: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              // User Info Area
-              Center(
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: primaryColor.withOpacity(0.2), width: 2), // 主题色边框
-                      ),
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: primaryColor.withOpacity(0.1),
-                        backgroundImage: _getAvatarImageProvider(currentUser.avatar),
-                        child: (currentUser.avatar == null ||
-                            (!isValidImageUrl(currentUser.avatar!) &&
-                                !AvatarService.isValidAvatarPath(currentUser.avatar!)))
-                            ? Text(
-                          currentUser.name
-                              .split(' ')
-                              .where((part) => part.isNotEmpty)
-                              .map((part) => part[0])
-                              .take(2)
-                              .join()
-                              .toUpperCase(),
-                          style: TextStyle(
-                              fontSize: 28,
+          body: Container(
+            // 使用渐变背景，否则白色玻璃看不见
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [bgGradientStart, bgGradientEnd],
+              ),
+            ),
+            child: SafeArea(
+              child: ListView(
+                padding: const EdgeInsets.all(20),
+                physics: const BouncingScrollPhysics(),
+                children: [
+                  const SizedBox(height: 10),
+                  // User Info Area
+                  Center(
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: primaryColor.withOpacity(0.2),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              )
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 50,
+                            backgroundColor: primaryColor.withOpacity(0.1),
+                            backgroundImage: _getAvatarImageProvider(currentUser.avatar),
+                            child: (currentUser.avatar == null ||
+                                (!isValidImageUrl(currentUser.avatar!) &&
+                                    !AvatarService.isValidAvatarPath(currentUser.avatar!)))
+                                ? Text(
+                              currentUser.name
+                                  .split(' ')
+                                  .where((part) => part.isNotEmpty)
+                                  .map((part) => part[0])
+                                  .take(2)
+                                  .join()
+                                  .toUpperCase(),
+                              style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: primaryColor),
+                            )
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          currentUser.name,
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w800, // 更粗的字体
+                            color: Colors.black87,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          currentUser.email,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Property Info (Glass Card)
+                  GlassContainer(
+                    // 移除 color 参数，使用默认 iOS 风格白
+                    opacity: 0.8,
+                    borderRadius: BorderRadius.circular(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Text(
+                            appProvider.getLocalizedText('property_information'),
+                            style: const TextStyle(
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: primaryColor), // 主题色文字
-                        )
-                            : null,
-                      ),
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                        _buildInfoRow(context, Icons.home_rounded, appProvider.getLocalizedText('address'), currentUser.propertySimpleAddress),
+                        const SizedBox(height: 12),
+                        _buildInfoRow(context, Icons.phone_rounded, appProvider.getLocalizedText('phone'), currentUser.phoneNumber ?? 'Not set'),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      currentUser.name,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87, // 深色文字
-                      ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Menu Options (Glass Card)
+                  GlassContainer(
+                    opacity: 0.8,
+                    borderRadius: BorderRadius.circular(24),
+                    padding: const EdgeInsets.symmetric(vertical: 8), // 列表式布局，垂直padding小一点
+                    child: Column(
+                      children: [
+                        _buildGlassListTile(
+                          context,
+                          icon: Icons.edit_outlined,
+                          title: appProvider.getLocalizedText('edit_profile'),
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.editProfile),
+                        ),
+                        _buildDivider(),
+                        _buildGlassListTile(
+                          context,
+                          icon: Icons.lock_outline_rounded,
+                          title: appProvider.getLocalizedText('change_password'),
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.changePassword),
+                        ),
+                        _buildDivider(),
+                        _buildGlassListTile(
+                          context,
+                          icon: Icons.language_rounded,
+                          title: appProvider.getLocalizedText('language'),
+                          subtitle: _getLanguageName(context.locale.languageCode),
+                          onTap: () => _showLanguageDialog(context),
+                        ),
+                        _buildDivider(),
+                        _buildGlassListTile(
+                          context,
+                          icon: Icons.credit_card_rounded,
+                          title: 'Payment Methods',
+                          onTap: () {
+                            Navigator.pushNamed(context, AppRoutes.managePaymentMethods);
+                          },
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      currentUser.email,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.black54, // 深色文字
-                      ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // About (Glass Card)
+                  GlassContainer(
+                    opacity: 0.8,
+                    borderRadius: BorderRadius.circular(24),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      children: [
+                        _buildGlassListTile(
+                          context,
+                          icon: Icons.help_outline_rounded,
+                          title: appProvider.getLocalizedText('help_support'),
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.helpSupport),
+                        ),
+                        _buildDivider(),
+                        _buildGlassListTile(
+                          context,
+                          icon: Icons.info_outline_rounded,
+                          title: appProvider.getLocalizedText('about'),
+                          subtitle: 'Version 1.0.0',
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.about),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 40),
+                ],
               ),
-              const SizedBox(height: 32),
-
-              // Property Info (Glass Card)
-              GlassContainer(
-                color: Colors.grey.shade50, // 在白色背景上使用极淡的灰色以显示玻璃效果
-                opacity: 0.8,
-                borderRadius: BorderRadius.circular(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      appProvider.getLocalizedText('property_information'),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87, // 深色文字
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInfoRow(context, Icons.home, appProvider.getLocalizedText('address'), currentUser.propertySimpleAddress),
-                    _buildInfoRow(context, Icons.phone, appProvider.getLocalizedText('phone'), currentUser.phoneNumber ?? 'Not set'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Menu Options (Glass Card)
-              GlassContainer(
-                color: Colors.grey.shade50, // 在白色背景上使用极淡的灰色
-                opacity: 0.8,
-                borderRadius: BorderRadius.circular(20),
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    _buildGlassListTile(
-                      context,
-                      icon: Icons.edit_outlined,
-                      title: appProvider.getLocalizedText('edit_profile'),
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.editProfile),
-                    ),
-                    Divider(height: 1, color: Colors.grey.shade200),
-
-                    _buildGlassListTile(
-                      context,
-                      icon: Icons.lock_outlined,
-                      title: appProvider.getLocalizedText('change_password'),
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.changePassword),
-                    ),
-                    Divider(height: 1, color: Colors.grey.shade200),
-
-                    _buildGlassListTile(
-                      context,
-                      icon: Icons.language_outlined,
-                      title: appProvider.getLocalizedText('language'),
-                      subtitle: _getLanguageName(context.locale.languageCode),
-                      onTap: () => _showLanguageDialog(context),
-                    ),
-                    Divider(height: 1, color: Colors.grey.shade200),
-
-                    // Payment Methods 入口
-                    _buildGlassListTile(
-                      context,
-                      icon: Icons.credit_card,
-                      title: 'Payment Methods',
-                      onTap: () {
-                        Navigator.pushNamed(context, AppRoutes.managePaymentMethods);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // About (Glass Card)
-              GlassContainer(
-                color: Colors.grey.shade50, // 在白色背景上使用极淡的灰色
-                opacity: 0.8,
-                borderRadius: BorderRadius.circular(20),
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    _buildGlassListTile(
-                      context,
-                      icon: Icons.help_outline,
-                      title: appProvider.getLocalizedText('help_support'),
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.helpSupport),
-                    ),
-                    Divider(height: 1, color: Colors.grey.shade200),
-                    _buildGlassListTile(
-                      context,
-                      icon: Icons.info_outline,
-                      title: appProvider.getLocalizedText('about'),
-                      subtitle: 'Version 1.0.0',
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.about),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 40),
-            ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  // 辅助方法：稍微优化分隔线，使其在玻璃上看起来更自然
+  Widget _buildDivider() {
+    return Divider(
+        height: 1,
+        color: Colors.grey.withOpacity(0.2),
+        indent: 56, // 让分割线不贯穿图标
+        endIndent: 20
     );
   }
 

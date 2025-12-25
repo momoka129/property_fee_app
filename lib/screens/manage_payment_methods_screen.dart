@@ -34,7 +34,6 @@ class _ManagePaymentMethodsScreenState
         elevation: 0,
         child: GlassContainer(
           borderRadius: BorderRadius.circular(24),
-          color: Colors.white,
           opacity: 0.95,
           blur: 20,
           child: Padding(
@@ -249,17 +248,30 @@ class _ManagePaymentMethodsScreenState
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
 
+    // 1. 定义背景渐变 (与 Profile/Admin 页面保持一致)
+    final Color bgGradientStart = const Color(0xFFF3F4F6);
+    final Color bgGradientEnd = const Color(0xFFE5E7EB);
+
     return Scaffold(
-      extendBodyBehindAppBar: true,
+      extendBodyBehindAppBar: true, // 让背景延伸到 AppBar 后面
       appBar: AppBar(
-        title: const Text("Payment Methods",
-            style: TextStyle(color: Colors.black87)),
+        title: const Text(
+          "Payment Methods",
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black87),
       ),
       body: Container(
-        color: Colors.white,
+        // 2. 使用渐变背景，衬托白色玻璃
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [bgGradientStart, bgGradientEnd],
+          ),
+        ),
         child: SafeArea(
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
@@ -293,23 +305,31 @@ class _ManagePaymentMethodsScreenState
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16),
+                          // 3. 列表项使用 GlassContainer
                           child: GlassContainer(
-                            color: card.isDefault
-                                ? primaryColor.withOpacity(0.05)
-                                : Colors.grey.shade50,
-                            opacity: 1.0,
+                            // 【修正】移除 color 参数
+                            opacity: 0.8,
                             borderRadius: BorderRadius.circular(20),
                             onTap: () => _setDefault(card.id),
                             child: Row(
                               children: [
+                                // 卡片图标容器
                                 Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    // 如果是默认卡，图标背景稍微带点主色
+                                      color: card.isDefault
+                                          ? primaryColor.withOpacity(0.1)
+                                          : Colors.white,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: card.isDefault
+                                              ? primaryColor.withOpacity(0.3)
+                                              : Colors.transparent
+                                      )
                                   ),
                                   child: Icon(
-                                    Icons.credit_card,
+                                    Icons.credit_card_rounded,
                                     color: card.type == 'Visa'
                                         ? Colors.blue
                                         : Colors.orange,
@@ -336,15 +356,25 @@ class _ManagePaymentMethodsScreenState
                                         card.isDefault
                                             ? "Default"
                                             : "Tap to set default",
-                                        style: const TextStyle(
-                                            color: Colors.black54,
-                                            fontSize: 12),
+                                        style: TextStyle(
+                                            color: card.isDefault
+                                                ? primaryColor.withOpacity(0.8)
+                                                : Colors.black54,
+                                            fontSize: 12,
+                                            fontWeight: card.isDefault ? FontWeight.w600 : FontWeight.normal
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
+                                // 如果是默认卡，显示一个勾选图标
+                                if (card.isDefault)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 8.0),
+                                    child: Icon(Icons.check_circle_rounded, color: primaryColor, size: 20),
+                                  ),
                                 IconButton(
-                                  icon: const Icon(Icons.delete,
+                                  icon: const Icon(Icons.delete_outline_rounded,
                                       color: Colors.black38),
                                   onPressed: () => _deleteCard(card.id),
                                 ),
@@ -355,16 +385,19 @@ class _ManagePaymentMethodsScreenState
                       },
                     ),
                   ),
+
+                  // 4. 底部添加按钮
                   Padding(
                     padding: const EdgeInsets.all(20),
                     child: GlassContainer(
-                      color: primaryColor,
-                      opacity: 0.1,
+                      // 【修正】移除 color: primaryColor
+                      opacity: 0.9,
+                      borderRadius: BorderRadius.circular(20),
                       onTap: _showAddCardDialog,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_circle_outline, color: primaryColor),
+                          Icon(Icons.add_circle_outline_rounded, color: primaryColor),
                           const SizedBox(width: 8),
                           Text(
                             "Add New Card",
