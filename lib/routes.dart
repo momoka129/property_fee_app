@@ -8,15 +8,13 @@ import 'screens/bills_screen.dart';
 import 'screens/repairs_screen.dart';
 import 'screens/announcements_screen.dart';
 import 'screens/packages_screen.dart';
-import 'screens/parking_screen.dart';
-import 'screens/parking_screen_firebase.dart';
+
 import 'screens/help_support_screen.dart';
 import 'screens/about_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/change_password_screen.dart';
 import 'screens/admin_bills_screen.dart';
 import 'screens/admin_repairs_screen.dart';
-import 'screens/admin_parking_screen.dart';
 import 'screens/manage_banks_screen.dart';
 import 'screens/bank_transfer_screen.dart';
 import 'models/bill_model.dart';
@@ -39,7 +37,6 @@ class AppRoutes {
   static const adminRepairs = '/admin-repairs';
   static const adminParking = '/admin-parking';
   static const packages = '/packages';
-  static const parking = '/parking';
   static const helpSupport = '/help-support';
   static const about = '/about';
   static const editProfile = '/edit-profile';
@@ -66,10 +63,8 @@ class AppRoutes {
     adminAnnouncements: (_) => const AdminAnnouncementsScreen(),
     adminBills: (_) => const AdminBillsScreen(),
     adminRepairs: (_) => const AdminRepairsScreen(),
-    adminParking: (_) => const AdminParkingScreen(),
     createAnnouncement: (_) => const SizedBox.shrink(), // handled via MaterialPageRoute when opening with args
     packages: (_) => const PackagesScreen(),
-    parking: (_) => const ParkingScreen(),
     helpSupport: (_) => const HelpSupportScreen(),
     about: (_) => const AboutScreen(),
     editProfile: (_) => const EditProfileScreen(),

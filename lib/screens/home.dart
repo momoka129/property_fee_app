@@ -609,7 +609,6 @@ class _DashboardPageState extends State<_DashboardPage> {
       {'icon': Icons.receipt_long, 'label': 'Bills', 'route': AppRoutes.bills, 'color': Colors.blue},
       {'icon': Icons.build, 'label': 'Repairs', 'route': AppRoutes.repairs, 'color': Colors.orange},
       {'icon': Icons.inventory_2, 'label': 'Packages', 'route': AppRoutes.packages, 'color': Colors.purple},
-      {'icon': Icons.local_parking, 'label': 'Parking', 'route': AppRoutes.parking, 'color': Colors.indigo},
     ];
 
     return Padding(
@@ -783,7 +782,7 @@ class _ServicesPage extends StatelessWidget {
             Icons.home_work,
             [
               {'icon': Icons.build, 'label': appProvider.getLocalizedText('repairs'), 'route': AppRoutes.repairs},
-              {'icon': Icons.local_parking, 'label': appProvider.getLocalizedText('parking'), 'route': AppRoutes.parking},
+
             ],
             appProvider,
           ),
