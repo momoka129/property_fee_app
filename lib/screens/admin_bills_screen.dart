@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import '../models/bill_model.dart';
 import '../models/user_model.dart';
 import '../services/firestore_service.dart';
-import '../services/data_migration_service.dart';
 import '../widgets/glass_container.dart';
 
 class AdminBillsScreen extends StatefulWidget {
@@ -206,7 +205,7 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: kCardRadius,
-          onTap: () => _showCardActionMenu(bill),
+          onTap: isPaid ? null : () => _showCardActionMenu(bill),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
@@ -236,6 +235,8 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
   }
 
   void _showCardActionMenu(BillModel bill) {
+    final isPaid = bill.status.toLowerCase() == 'paid';
+
     showModalBottomSheet(
       context: context, backgroundColor: Colors.transparent,
       builder: (context) => Container(
@@ -244,9 +245,34 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 20),
-          ListTile(leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.edit, color: Colors.blue)), title: const Text('Edit Bill'), onTap: () { Navigator.pop(context); _showEditDialog(context, bill: bill); }),
-          const Divider(indent: 20, endIndent: 20),
-          ListTile(leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.delete_outline, color: Colors.red)), title: const Text('Delete Bill'), textColor: Colors.red, onTap: () { Navigator.pop(context); _confirmDelete(bill); }),
+          if (isPaid) ...[
+            // 显示已支付账单的提示信息
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green[700], size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'This bill has been paid and cannot be modified.',
+                      style: TextStyle(color: Colors.green[800], fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // 显示编辑和删除选项
+            ListTile(leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.edit, color: Colors.blue)), title: const Text('Edit Bill'), onTap: () { Navigator.pop(context); _showEditDialog(context, bill: bill); }),
+            const Divider(indent: 20, endIndent: 20),
+            ListTile(leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.delete_outline, color: Colors.red)), title: const Text('Delete Bill'), textColor: Colors.red, onTap: () { Navigator.pop(context); _confirmDelete(bill); }),
+          ],
           const SizedBox(height: 10),
         ]),
       ),
@@ -256,6 +282,19 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
   // --- GlassContainer 风格的 Dialog (Delete) ---
 
   Future<void> _confirmDelete(BillModel bill) async {
+    final isPaid = bill.status.toLowerCase() == 'paid';
+
+    if (isPaid) {
+      // 已支付账单不能删除，显示提示
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot delete a paid bill'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: Colors.black.withOpacity(0.2), // 背景变暗一点，突出玻璃
@@ -294,64 +333,20 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
     }
   }
 
-  // --- GlassContainer 风格的 Dialog (Migrate) ---
-
-  Future<void> _showUserMigrationDialog(BuildContext context) async {
-    UserModel? selectedUser;
-    bool isLoading = false;
-    final users = await FirestoreService.getAllUsers();
-    if (!mounted) return;
-
-    await showDialog(
-      context: context,
-      barrierColor: Colors.black.withOpacity(0.3),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          insetPadding: const EdgeInsets.all(20),
-          child: GlassContainer(
-            opacity: 0.9,
-            borderRadius: BorderRadius.circular(24),
-            padding: const EdgeInsets.all(24),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const Text("Migrate User Data", textAlign: TextAlign.center, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.amber[50], borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.withOpacity(0.5))),
-                child: const Row(children: [Icon(Icons.warning_amber_rounded, color: Colors.amber), SizedBox(width: 8), Expanded(child: Text('Select a primary user. This will move ALL bills to this user ID.', style: TextStyle(fontSize: 12, color: Colors.black87)))]),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<UserModel>(
-                value: selectedUser,
-                decoration: InputDecoration(labelText: 'Select Target User', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
-                items: users.map((UserModel user) => DropdownMenuItem(value: user, child: Text(user.name, overflow: TextOverflow.ellipsis))).toList(),
-                onChanged: (UserModel? newValue) => setState(() => selectedUser = newValue),
-              ),
-              if (isLoading) ...[const SizedBox(height: 16), const LinearProgressIndicator(), const SizedBox(height: 8), const Text('Migrating...', style: TextStyle(fontSize: 12))],
-              const SizedBox(height: 24),
-              Row(children: [
-                Expanded(child: TextButton(onPressed: isLoading ? null : () => Navigator.pop(context), child: const Text('Cancel'))),
-                const SizedBox(width: 12),
-                Expanded(child: FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.orange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: isLoading || selectedUser == null ? null : () async {
-                  setState(() => isLoading = true);
-                  try {
-                    await DataMigrationService.migrateAllDataToSelectedUser(selectedUser!.id);
-                    if (mounted) { Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Success! Data migrated to ${selectedUser!.name}'), backgroundColor: Colors.green)); setState(() {}); }
-                  } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red)); } finally { if (mounted) setState(() => isLoading = false); }
-                }, child: const Text('Start'))),
-              ]),
-            ]),
-          ),
-        ),
-      ),
-    );
-  }
 
   // --- GlassContainer 风格的 Dialog (Edit/Create) ---
 
   Future<void> _showEditDialog(BuildContext context, {BillModel? bill}) async {
+    if (bill != null && bill.status.toLowerCase() == 'paid') {
+      // 已支付账单不能编辑，显示提示
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot edit a paid bill'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
     final titleCtrl = TextEditingController(text: bill?.title ?? '');
     final amountCtrl = TextEditingController(text: bill != null ? bill.amount.toString() : '');
     String selectedCategory = bill?.category ?? 'maintenance';
