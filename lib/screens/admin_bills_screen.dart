@@ -29,6 +29,10 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
   // 账单过滤状态
   String _selectedFilter = 'all'; // 'all', 'paid', 'unpaid'
 
+  // 选择状态管理（仅在unpaid过滤器下使用）
+  bool _isSelectionMode = false;
+  final Set<String> _selectedBillIds = {};
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,6 +49,7 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
             children: [
               _buildHeader(context),
               _buildFilterButtons(),
+              if (_selectedFilter == 'unpaid') _buildSelectionActions(),
               Expanded(child: _buildBillList()),
             ],
           ),
@@ -109,8 +114,12 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
               child: ToggleButtons(
                 isSelected: [_selectedFilter == 'all', _selectedFilter == 'paid', _selectedFilter == 'unpaid'],
                 onPressed: (index) {
+                  final newFilter = ['all', 'paid', 'unpaid'][index];
                   setState(() {
-                    _selectedFilter = ['all', 'paid', 'unpaid'][index];
+                    _selectedFilter = newFilter;
+                    // 切换过滤器时重置选择状态
+                    _isSelectionMode = false;
+                    _selectedBillIds.clear();
                   });
                 },
                 borderRadius: BorderRadius.circular(8),
@@ -132,6 +141,73 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
     );
   }
 
+  Widget _buildSelectionActions() {
+    // Use Wrap so buttons can wrap to the next line on narrow screens and avoid RenderFlex overflow.
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: LayoutBuilder(builder: (context, constraints) {
+        return Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          alignment: WrapAlignment.start,
+          children: [
+            if (_isSelectionMode) ...[
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.6),
+                child: TextButton.icon(
+                  onPressed: _selectedBillIds.isEmpty ? null : _confirmBulkDelete,
+                  icon: const Icon(Icons.delete_forever, color: Colors.red),
+                  label: Text('Delete Selected (${_selectedBillIds.length})',
+                      style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.red.withOpacity(0.1),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.28),
+                child: TextButton.icon(
+                  onPressed: _toggleSelectAll,
+                  icon: Icon(_isAllSelected ? Icons.deselect : Icons.select_all, color: primaryColor),
+                  label: Text(_isAllSelected ? 'Deselect All' : 'Select All',
+                      style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600)),
+                  style: TextButton.styleFrom(
+                    backgroundColor: primaryColor.withOpacity(0.1),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+            ],
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.4),
+              child: TextButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _isSelectionMode = !_isSelectionMode;
+                    if (!_isSelectionMode) {
+                      _selectedBillIds.clear();
+                    }
+                  });
+                },
+                icon: Icon(_isSelectionMode ? Icons.close : Icons.checklist, color: primaryColor),
+                label: Text(_isSelectionMode ? 'Cancel' : 'Select',
+                    style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600)),
+                style: TextButton.styleFrom(
+                  backgroundColor: primaryColor.withOpacity(0.1),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
   Widget _buildBillList() {
     return StreamBuilder<List<BillModel>>(
       stream: FirestoreService.getAllBillsStream(),
@@ -143,8 +219,12 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
         List<BillModel> bills = snapshot.data ?? [];
         if (_selectedFilter == 'paid') {
           bills = bills.where((bill) => bill.status.toLowerCase() == 'paid').toList();
+          _currentUnpaidBills = []; // 清空未支付账单列表
         } else if (_selectedFilter == 'unpaid') {
           bills = bills.where((bill) => bill.status.toLowerCase() != 'paid').toList();
+          _currentUnpaidBills = bills; // 保存当前未支付账单列表
+        } else {
+          _currentUnpaidBills = []; // 清空未支付账单列表
         }
 
         if (bills.isEmpty) {
@@ -186,6 +266,7 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
     final displayName = user?.name ?? bill.payerName;
     final isPaid = bill.status.toLowerCase() == 'paid';
     final isOverdue = bill.status.toLowerCase() == 'overdue';
+    final isSelected = _selectedBillIds.contains(bill.id);
     Color statusColor = isPaid ? const Color(0xFF10B981) : (isOverdue ? const Color(0xFFEF4444) : const Color(0xFFF59E0B));
 
     IconData categoryIcon = Icons.receipt;
@@ -200,16 +281,33 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
     }
 
     return Container(
-      decoration: BoxDecoration(color: cardColor, borderRadius: kCardRadius, boxShadow: kCardShadow),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: kCardRadius,
+        boxShadow: kCardShadow,
+        border: _isSelectionMode && isSelected
+            ? Border.all(color: primaryColor, width: 2)
+            : null,
+      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: kCardRadius,
-          onTap: isPaid ? null : () => _showCardActionMenu(bill),
+          onTap: _isSelectionMode && _selectedFilter == 'unpaid'
+              ? () => _toggleBillSelection(bill.id)
+              : (isPaid ? null : () => _showCardActionMenu(bill)),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
+                if (_isSelectionMode && _selectedFilter == 'unpaid') ...[
+                  Checkbox(
+                    value: isSelected,
+                    onChanged: (bool? value) => _toggleBillSelection(bill.id),
+                    activeColor: primaryColor,
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 Container(width: 50, height: 50, decoration: BoxDecoration(color: iconBgColor, borderRadius: BorderRadius.circular(14)), child: Icon(categoryIcon, color: iconColor, size: 26)),
                 const SizedBox(width: 16),
                 Expanded(
@@ -232,6 +330,34 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
         ),
       ),
     );
+  }
+
+  void _toggleBillSelection(String billId) {
+    setState(() {
+      if (_selectedBillIds.contains(billId)) {
+        _selectedBillIds.remove(billId);
+      } else {
+        _selectedBillIds.add(billId);
+      }
+    });
+  }
+
+  bool get _isAllSelected {
+    // 这里需要获取当前显示的账单数量来判断是否全选
+    // 我们需要在_buildBillList中保存当前账单列表的引用
+    return _currentUnpaidBills.isNotEmpty && _selectedBillIds.length == _currentUnpaidBills.length;
+  }
+
+  List<BillModel> _currentUnpaidBills = [];
+
+  void _toggleSelectAll() {
+    setState(() {
+      if (_isAllSelected) {
+        _selectedBillIds.clear();
+      } else {
+        _selectedBillIds.addAll(_currentUnpaidBills.map((bill) => bill.id));
+      }
+    });
   }
 
   void _showCardActionMenu(BillModel bill) {
@@ -333,6 +459,67 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
     }
   }
 
+  Future<void> _confirmBulkDelete() async {
+    if (_selectedBillIds.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.2),
+      builder: (c) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.all(20),
+        child: GlassContainer(
+          opacity: 0.9,
+          borderRadius: BorderRadius.circular(24),
+          padding: const EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.red[50], shape: BoxShape.circle), child: const Icon(Icons.delete_forever_rounded, size: 32, color: Colors.red)),
+            const SizedBox(height: 16),
+            Text("Delete ${_selectedBillIds.length} Bills", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text("Are you sure you want to delete ${_selectedBillIds.length} selected bills? This action cannot be undone.", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[700])),
+            const SizedBox(height: 24),
+            Row(children: [
+              Expanded(child: TextButton(onPressed: () => Navigator.pop(c, false), child: const Text("Cancel"))),
+              const SizedBox(width: 12),
+              Expanded(child: FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 12)), onPressed: () => Navigator.pop(c, true), child: const Text("Delete All"))),
+            ]),
+          ]),
+        ),
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        int successCount = 0;
+        int failCount = 0;
+
+        for (final billId in _selectedBillIds) {
+          try {
+            await FirestoreService.deleteBill(billId);
+            successCount++;
+          } catch (e) {
+            failCount++;
+          }
+        }
+
+        setState(() {
+          _selectedBillIds.clear();
+          _isSelectionMode = false;
+        });
+
+        String message = '$successCount bills deleted successfully';
+        if (failCount > 0) {
+          message += ', $failCount failed';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Bulk delete failed: $e')));
+      }
+    }
+  }
 
   // --- GlassContainer 风格的 Dialog (Edit/Create) ---
 
