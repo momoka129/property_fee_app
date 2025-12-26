@@ -220,7 +220,9 @@ class ProfileTab extends StatelessWidget {
                             ),
                           ),
                         ),
-                        _buildInfoRow(context, Icons.home_rounded, 'Address', currentUser.propertySimpleAddress),
+                        // Hide address for admin users (management accounts don't need property address)
+                        if (currentUser.role != 'admin')
+                          _buildInfoRow(context, Icons.home_rounded, 'Address', currentUser.propertySimpleAddress),
                         const SizedBox(height: 12),
                         _buildInfoRow(
                           context,

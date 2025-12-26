@@ -541,10 +541,6 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
     String selectedCategory = bill?.category ?? 'maintenance';
     UserModel? selectedUser;
     // Address selection state
-    String selectedBuilding = 'Alpha Building';
-    String selectedFloor = 'G';
-    String selectedUnit = '01';
-    final addressCtrl = TextEditingController(text: bill?.propertySimpleAddress ?? '');
     DateTime dueDate = bill?.dueDate ?? DateTime.now().add(const Duration(days: 30));
     DateTime billingDate = bill?.billingDate ?? DateTime.now();
 
@@ -553,34 +549,6 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
       try { selectedUser = users.firstWhere((user) => user.id == bill.userId); } catch (e) {}
     }
 
-    // Parse existing address to initialize selectors
-    if (bill?.propertySimpleAddress != null && bill!.propertySimpleAddress.isNotEmpty) {
-      final address = bill.propertySimpleAddress;
-      try {
-        // split by space: ["Alpha", "Building", "G01"] or "Alpha Building G01"
-        final parts = address.split(' ');
-        if (parts.length >= 3) {
-          selectedBuilding = '${parts[0]} ${parts[1]}';
-          final last = parts.sublist(2).join(' ');
-          // last expected like G01
-          if (last.isNotEmpty) {
-            selectedFloor = last[0];
-            selectedUnit = last.substring(1);
-          }
-        } else {
-          // fallback: attempt to extract floor+unit at end
-          final match = RegExp(r'([A-Za-z ]+)\s+([G|0-9][0-9])\$').firstMatch(address);
-          if (match != null) {
-            selectedBuilding = match.group(1)!.trim();
-            final fu = match.group(2)!;
-            selectedFloor = fu[0];
-            selectedUnit = fu.substring(1);
-          }
-        }
-      } catch (_) {
-        // If parsing fails, keep default values
-      }
-    }
 
     final List<String> categories = ['maintenance', 'water', 'electricity', 'gas', 'parking', 'management', 'internet'];
 
@@ -615,101 +583,7 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
                           value: selectedUser,
                           decoration: InputDecoration(labelText: 'Payer', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
                           items: users.map((UserModel user) => DropdownMenuItem(value: user, child: Text(user.name))).toList(),
-                          onChanged: (val) => setState(() {
-                            selectedUser = val;
-                            if (val != null) {
-                              addressCtrl.text = val.propertySimpleAddress;
-                              // Parse selected user's address to update selectors
-                              final address = val.propertySimpleAddress;
-                              if (address.isNotEmpty) {
-                                try {
-                                  final parts = address.split(' ');
-                                  if (parts.length >= 3) {
-                                    selectedBuilding = '${parts[0]} ${parts[1]}';
-                                    final last = parts.sublist(2).join(' ');
-                                    if (last.isNotEmpty) {
-                                      selectedFloor = last[0];
-                                      selectedUnit = last.substring(1);
-                                    }
-                                  }
-                                } catch (_) {}
-                              }
-                            }
-                          }),
-                        ),
-                        const SizedBox(height: 12),
-                        // Building selection (choose one of three buildings inline)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text('Building', style: Theme.of(context).textTheme.bodySmall),
-                        ),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            ChoiceChip(
-                              label: const Text('Alpha Building'),
-                              selected: selectedBuilding == 'Alpha Building',
-                              onSelected: (_) => setState(() => selectedBuilding = 'Alpha Building'),
-                            ),
-                            ChoiceChip(
-                              label: const Text('Beta Building'),
-                              selected: selectedBuilding == 'Beta Building',
-                              onSelected: (_) => setState(() => selectedBuilding = 'Beta Building'),
-                            ),
-                            ChoiceChip(
-                              label: const Text('Central Building'),
-                              selected: selectedBuilding == 'Central Building',
-                              onSelected: (_) => setState(() => selectedBuilding = 'Central Building'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Floor + Unit selection (Floor: G..5, Unit: 01/02)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: InputDecorator(
-                                decoration: const InputDecoration(labelText: 'Floor', border: OutlineInputBorder()),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    value: selectedFloor,
-                                    items: const [
-                                      DropdownMenuItem(value: 'G', child: Text('G')),
-                                      DropdownMenuItem(value: '1', child: Text('1')),
-                                      DropdownMenuItem(value: '2', child: Text('2')),
-                                      DropdownMenuItem(value: '3', child: Text('3')),
-                                      DropdownMenuItem(value: '4', child: Text('4')),
-                                      DropdownMenuItem(value: '5', child: Text('5')),
-                                    ],
-                                    onChanged: (v) {
-                                      if (v == null) return;
-                                      setState(() => selectedFloor = v);
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: InputDecorator(
-                                decoration: const InputDecoration(labelText: 'Unit', border: OutlineInputBorder()),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    value: selectedUnit,
-                                    items: const [
-                                      DropdownMenuItem(value: '01', child: Text('01')),
-                                      DropdownMenuItem(value: '02', child: Text('02')),
-                                    ],
-                                    onChanged: (v) {
-                                      if (v == null) return;
-                                      setState(() => selectedUnit = v);
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                          onChanged: (val) => setState(() => selectedUser = val),
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
@@ -775,13 +649,10 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
                       return;
                     }
 
-                    // Set composed address
-                    addressCtrl.text = '$selectedBuilding $selectedFloor$selectedUnit';
-
                     final payload = {
                       'userId': selectedUser?.id ?? bill?.userId ?? '',
                       'payerName': selectedUser?.name ?? '',
-                      'propertySimpleAddress': addressCtrl.text,
+                      'propertySimpleAddress': selectedUser?.propertySimpleAddress ?? '',
                       'title': titleCtrl.text,
                       'description': '',
                       'amount': double.tryParse(amountCtrl.text) ?? 0.0,

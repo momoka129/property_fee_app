@@ -137,36 +137,7 @@ class HelpSupportScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Quick Links
-              GlassContainer(
-                opacity: 0.8,
-                borderRadius: BorderRadius.circular(24),
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Column(
-                  children: [
-                    _buildLinkTile(
-                      context,
-                      'Resident Handbook',
-                      Icons.description,
-                      () => _showResidentHandbook(context),
-                    ),
-                    _buildDivider(),
-                    _buildLinkTile(
-                      context,
-                      'Terms & Conditions',
-                      Icons.gavel,
-                      () => _showTerms(context),
-                    ),
-                    _buildDivider(),
-                    _buildLinkTile(
-                      context,
-                      'Privacy Policy',
-                      Icons.privacy_tip,
-                      () => _showPrivacy(context),
-                    ),
-                  ],
-                ),
-              ),
+              // Quick Links (removed: Resident Handbook, Terms & Conditions, Privacy Policy)
               const SizedBox(height: 40),
             ],
           ),
@@ -317,97 +288,7 @@ class HelpSupportScreen extends StatelessWidget {
   }
 
 
-  void _showResidentHandbook(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Resident Handbook'),
-        content: const SingleChildScrollView(
-          child: Text(
-            'Welcome to our community! This handbook contains important information for all residents:\n\n'
-            'HOUSING REGULATIONS:\n'
-            '• Maintenance fees are due on the 1st of each month\n'
-            '• Late payment fees: RM 50 after due date\n'
-            '• Visitors must register at security desk\n'
-            '• Parking permits required for all vehicles\n\n'
-            'COMMUNITY RULES:\n'
-            '• Quiet hours: 10:00 PM - 7:00 AM\n'
-            '• Common areas must be kept clean\n'
-            '• Report maintenance issues within 24 hours\n'
-            '• Pets must be on leash in common areas\n\n'
-            'EMERGENCY CONTACTS:\n'
-            '• Security Guard House: 03-1234-5678\n'
-            '• Fire Department: 994\n'
-            '• Police: 999\n'
-            '• Hospital: 03-1234-5679',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showTerms(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Terms & Conditions'),
-        content: const SingleChildScrollView(
-          child: Text(
-            'By using this Property Management App, you agree to:\n\n'
-            '• Use the app only for legitimate property management purposes\n'
-            '• Provide accurate information when submitting requests\n'
-            '• Pay all maintenance fees and charges on time\n'
-            '• Follow all community rules and regulations\n'
-            '• Respect the privacy of other residents\n'
-            '• Report any security concerns immediately\n'
-            '• Keep your account information secure\n\n'
-            'The management reserves the right to suspend or terminate access for violations.\n\n'
-            'All maintenance fees are non-refundable once paid.',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPrivacy(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Privacy Policy'),
-        content: const SingleChildScrollView(
-          child: Text(
-            'We are committed to protecting your privacy:\n\n'
-            '• Your personal information is used only for property management purposes\n'
-            '• We do not share your data with third parties without consent\n'
-            '• Payment information is processed securely through licensed payment providers\n'
-            '• You can access and update your information anytime through the app\n'
-            '• We use encryption to protect sensitive data\n'
-            '• Activity logs are kept for security and maintenance purposes only\n'
-            '• Visitor pass applications are stored securely for security records\n\n'
-            'For questions about your privacy, contact the Security Guard House.',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
+  // Resident Handbook, Terms & Conditions, and Privacy Policy dialogs removed from Help & Support screen.
 }
 
 
