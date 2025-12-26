@@ -127,22 +127,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true, // 让背景延伸到 AppBar 后面
       appBar: AppBar(
-        title: const Text('Checkout', style: TextStyle(color: Colors.white)),
+        title: const Text('Checkout', style: TextStyle(color: Colors.black87)),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.black87),
       ),
       body: Container(
-        // 全局绿色渐变背景，衬托玻璃效果
-        decoration: const BoxDecoration(
+        // 透明白背景（类似磨砂纸白），更适合玻璃卡片
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF1B5E20), // 深绿
-              Color(0xFF4CAF50), // 中绿
-              Color(0xFFA5D6A7), // 浅绿
+              Colors.white.withOpacity(0.95),
+              Colors.white.withOpacity(0.92),
+              const Color(0xFFF6F7F9),
             ],
           ),
         ),
@@ -154,12 +154,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 padding: const EdgeInsets.all(20),
                 child: GlassContainer(
                   borderRadius: BorderRadius.circular(24),
-                  opacity: 0.15,
+                  opacity: 0.85,
                   child: Column(
                     children: [
                       const Text(
                         "Total Amount to Pay",
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                        style: TextStyle(color: Colors.black54, fontSize: 14),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -167,7 +167,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         style: const TextStyle(
                           fontSize: 36,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: Colors.black87,
                           letterSpacing: 1,
                         ),
                       ),
@@ -176,13 +176,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.black.withOpacity(0.06),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
                           "${_targetBills.length} bill(s) selected",
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 12),
+                          style: const TextStyle(color: Colors.black54, fontSize: 12),
                         ),
                       ),
                     ],
@@ -246,32 +245,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         ),
 
                       const SizedBox(height: 24),
-                      const SectionTitle(title: "E-WALLETS & OTHERS"),
-                      const SizedBox(height: 12),
-
-                      // 预置的常用支付方式
-                      _buildPaymentOptionCard(
-                        id: 'grab',
-                        name: 'GrabPay',
-                        icon: Icons.local_taxi,
-                        iconColor: Colors.greenAccent,
-                        subtitle: 'Linked: 012-*** 8888',
-                      ),
-                      _buildPaymentOptionCard(
-                        id: 'tng',
-                        name: 'Touch \'n Go eWallet',
-                        icon: Icons.touch_app,
-                        iconColor: Colors.blue,
-                        subtitle: 'Balance: RM 500.00',
-                      ),
-                      _buildPaymentOptionCard(
-                        id: 'paypal',
-                        name: 'PayPal',
-                        icon: Icons.payment,
-                        iconColor: Colors.indigoAccent,
-                        subtitle: 'user@example.com',
-                      ),
-
+                      // Only card payment methods are supported now.
                       const SizedBox(height: 100), // 底部留白给按钮
                     ],
                   ),
@@ -330,7 +304,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   // 1. Add Card 按钮 (玻璃风格)
   Widget _buildAddCardButton(BuildContext context) {
     return GlassContainer(
-      opacity: 0.15,
+      opacity: 0.85,
       borderRadius: BorderRadius.circular(16),
       onTap: () {
         // 关键逻辑：跳转到路由表中定义的管理页面
@@ -339,13 +313,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: const [
-          Icon(Icons.add_circle_outline, color: Colors.white),
+          Icon(Icons.add_circle_outline, color: Colors.black87),
           SizedBox(width: 8),
           Text(
             "Add New Card",
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: Colors.black87,
               fontSize: 16,
             ),
           ),
@@ -367,7 +341,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: GlassContainer(
-        opacity: isSelected ? 0.25 : 0.1,
+        opacity: isSelected ? 0.9 : 0.85,
         borderRadius: BorderRadius.circular(16),
         // 选中时添加绿色边框
         onTap: () {
@@ -382,7 +356,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withOpacity(0.95),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: iconColor, size: 24),
@@ -399,7 +373,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: Colors.white, // 深色背景用白字
+                      color: Colors.black87,
                     ),
                   ),
                   if (subtitle != null) ...[
@@ -408,7 +382,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       subtitle,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.white.withOpacity(0.7),
+                        color: Colors.black54,
                       ),
                     ),
                   ],
@@ -418,10 +392,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
             // 选中对号
             if (isSelected)
-              const Icon(Icons.check_circle, color: Colors.white, size: 28)
+              const Icon(Icons.check_circle, color: Color(0xFF2E7D32), size: 28)
             else
-              Icon(Icons.circle_outlined,
-                  color: Colors.white.withOpacity(0.3), size: 28),
+              Icon(Icons.circle_outlined, color: Colors.black26, size: 28),
           ],
         ),
       ),

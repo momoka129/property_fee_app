@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart';
-import '../providers/app_provider.dart';
+import '../widgets/glass_container.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -102,7 +101,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final appProvider = context.watch<AppProvider>();
+    
 
     return Scaffold(
       appBar: AppBar(
@@ -112,9 +111,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
+              child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
-              child: Form(
+              child: GlassContainer(
+                padding: const EdgeInsets.all(20),
+                borderRadius: BorderRadius.circular(16),
+                child: Form(
                 key: _formKey,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -274,6 +276,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

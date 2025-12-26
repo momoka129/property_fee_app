@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart'; // 引入 Provider
 import 'package:url_launcher/url_launcher.dart';
 import '../data/mock_data.dart'; // 如果不再使用 MockData，可以逐步移除
 import '../models/bill_model.dart';
 import '../services/firestore_service.dart';
 import '../widgets/bill_card.dart';
+import '../widgets/glass_container.dart';
 import '../routes.dart';
 import '../providers/app_provider.dart'; // 引入 AppProvider 获取真实用户
 import 'bill_detail.dart';
@@ -120,67 +120,73 @@ class _BillsScreenState extends State<BillsScreen> with SingleTickerProviderStat
           ),
           body: Column(
             children: [
-              // 修改 4: 顶部总欠款显示逻辑
+              // 修改 4: 顶部总欠款显示逻辑（卡片样式，统一管理员风格）
               if (totalOutstanding > 0)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    border: Border(bottom: BorderSide(color: Colors.orange.shade100)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            'Total Outstanding',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.orange.shade800
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                  child: GlassContainer(
+                    borderRadius: BorderRadius.circular(20),
+                    blur: 12,
+                    opacity: 0.65,
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Total Outstanding',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Colors.orange.shade800,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                             ),
-                          ),
-                          if (totalOverdueAmount > 0)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 8.0),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(4),
+                            if (totalOverdueAmount > 0)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8.0),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'Includes Penalty',
+                                    style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.bold),
+                                  ),
                                 ),
-                                child: const Text(
-                                  'Includes Penalty',
-                                  style: TextStyle(fontSize: 10, color: Colors.red, fontWeight: FontWeight.bold),
-                                ),
+                              )
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'RM ${totalOutstanding.toStringAsFixed(2)}',
+                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange.shade900,
                               ),
-                            )
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'RM ${totalOutstanding.toStringAsFixed(2)}',
-                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange.shade900,
                             ),
-                          ),
-                          FilledButton.icon(
-                            onPressed: () {
-                              _showPayAllDialog(allPayableBills, totalOutstanding);
-                            },
-                            icon: const Icon(Icons.payment, size: 18),
-                            label: const Text('Pay All'),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Colors.deepOrange,
+                            FilledButton.icon(
+                              onPressed: () {
+                                _showPayAllDialog(allPayableBills, totalOutstanding);
+                              },
+                              icon: const Icon(Icons.payment, size: 18),
+                              label: const Text('Pay All'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFFF97316), // 橙色
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               Expanded(

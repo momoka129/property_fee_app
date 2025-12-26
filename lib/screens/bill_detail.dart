@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/bill_model.dart';
 import '../data/mock_data.dart';
 import '../routes.dart';
+import '../widgets/glass_container.dart';
 
 class BillDetailScreen extends StatefulWidget {
   final BillModel bill;
@@ -142,30 +143,29 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
 
   Widget _buildAmountCard(BuildContext context) {
     final bill = widget.bill;
-    return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.primaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Amount',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'RM ${bill.amount.toStringAsFixed(2)}',
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-          ],
-        ),
+    return GlassContainer(
+      borderRadius: BorderRadius.circular(16),
+      blur: 12,
+      opacity: 0.75,
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Amount',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Colors.black87,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'RM ${bill.amount.toStringAsFixed(2)}',
+            style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+        ],
       ),
     );
   }
@@ -243,30 +243,29 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
               ),
         ),
         const SizedBox(height: 16),
-        Card(
-          elevation: 0,
-          color: Colors.green.shade50,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _buildInfoRow(
-                  context,
-                  'Payment Date',
-                  DateFormat('MMM dd, yyyy').format(payment.paymentDate),
-                ),
-                _buildInfoRow(
-                  context,
-                  'Payment Method',
-                  payment.paymentMethodDisplay,
-                ),
-                _buildInfoRow(
-                  context,
-                  'Transaction ID',
-                  payment.transactionId,
-                ),
-              ],
-            ),
+        GlassContainer(
+          borderRadius: BorderRadius.circular(12),
+          blur: 10,
+          opacity: 0.75,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              _buildInfoRow(
+                context,
+                'Payment Date',
+                DateFormat('MMM dd, yyyy').format(payment.paymentDate),
+              ),
+              _buildInfoRow(
+                context,
+                'Payment Method',
+                payment.paymentMethodDisplay,
+              ),
+              _buildInfoRow(
+                context,
+                'Transaction ID',
+                payment.transactionId,
+              ),
+            ],
           ),
         ),
       ],

@@ -4,6 +4,7 @@ import 'package:property_fee_app/widgets/malaysia_phone_input.dart' as mp;
 import '../data/mock_data.dart';
 import '../providers/app_provider.dart';
 import '../services/firestore_service.dart';
+import '../widgets/glass_container.dart';
 import '../services/avatar_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -211,148 +212,157 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            // Avatar Section
-            Center(
+            GlassContainer(
+              padding: const EdgeInsets.all(18),
+              borderRadius: BorderRadius.circular(16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundImage: _getAvatarImageProvider(),
-                    child: _selectedAvatarUrl == null || !_isValidAvatarUrl(_selectedAvatarUrl!)
-                        ? Text(
-                            // Guard against empty name to avoid RangeError when accessing [0]
-                            (user.name.isNotEmpty ? user.name[0].toUpperCase() : '?'),
-                            style: const TextStyle(fontSize: 40),
-                          )
-                        : null,
+                  // Avatar Section
+                  Center(
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundImage: _getAvatarImageProvider(),
+                          child: _selectedAvatarUrl == null || !_isValidAvatarUrl(_selectedAvatarUrl!)
+                              ? Text(
+                                  // Guard against empty name to avoid RangeError when accessing [0]
+                                  (user.name.isNotEmpty ? user.name[0].toUpperCase() : '?'),
+                                  style: const TextStyle(fontSize: 40),
+                                )
+                              : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextButton.icon(
+                          onPressed: () => _changePhoto(),
+                          icon: const Icon(Icons.camera_alt),
+                          label: const Text('Change Photo'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Form Fields
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Name *',
+                      prefixIcon: const Icon(Icons.person_outline),
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your name';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 16),
-                  TextButton.icon(
-                    onPressed: () => _changePhoto(),
-                    icon: const Icon(Icons.camera_alt),
-                    label: const Text('Change Photo'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
 
-            // Form Fields
-            TextFormField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'Name *',
-                prefixIcon: const Icon(Icons.person_outline),
-                border: const OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your name';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Use MalaysiaPhoneInput for consistent phone input UI (optional field)
-            mp.MalaysiaPhoneInput(
-              controller: _phoneController,
-              label: 'Phone Number',
-              required: false,
-              // keep existing behavior: empty allowed
-              validator: (v) {
-                final txt = _phoneController.text.trim();
-                if (txt.isNotEmpty && txt.length != 9) return 'Phone must be 9 digits';
-                return null;
-              },
-              onChanged: (val) {},
-            ),
-            const SizedBox(height: 16),
-
-            // Building/floor/unit selectors are only shown for resident users
-            if (user.role != 'admin') ...[
-              // Building selection (choose one of three buildings inline)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text('Building', style: Theme.of(context).textTheme.bodySmall),
-              ),
-              Wrap(
-                spacing: 8,
-                children: [
-                  ChoiceChip(
-                    label: const Text('Alpha Building'),
-                    selected: _selectedBuilding == 'Alpha Building',
-                    onSelected: (_) => setState(() => _selectedBuilding = 'Alpha Building'),
+                  // Use MalaysiaPhoneInput for consistent phone input UI (optional field)
+                  mp.MalaysiaPhoneInput(
+                    controller: _phoneController,
+                    label: 'Phone Number',
+                    required: false,
+                    // keep existing behavior: empty allowed
+                    validator: (v) {
+                      final txt = _phoneController.text.trim();
+                      if (txt.isNotEmpty && txt.length != 9) return 'Phone must be 9 digits';
+                      return null;
+                    },
+                    onChanged: (val) {},
                   ),
-                  ChoiceChip(
-                    label: const Text('Beta Building'),
-                    selected: _selectedBuilding == 'Beta Building',
-                    onSelected: (_) => setState(() => _selectedBuilding = 'Beta Building'),
-                  ),
-                  ChoiceChip(
-                    label: const Text('Central Building'),
-                    selected: _selectedBuilding == 'Central Building',
-                    onSelected: (_) => setState(() => _selectedBuilding = 'Central Building'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-              // Floor + Unit selection (Floor: G..5, Unit: 01/02)
-              Row(
-                children: [
-                  Expanded(
-                    child: InputDecorator(
-                      decoration: const InputDecoration(labelText: 'Floor', border: OutlineInputBorder()),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _selectedFloor,
-                          items: const [
-                            DropdownMenuItem(value: 'G', child: Text('G')),
-                            DropdownMenuItem(value: '1', child: Text('1')),
-                            DropdownMenuItem(value: '2', child: Text('2')),
-                            DropdownMenuItem(value: '3', child: Text('3')),
-                            DropdownMenuItem(value: '4', child: Text('4')),
-                            DropdownMenuItem(value: '5', child: Text('5')),
-                          ],
-                          onChanged: (v) {
-                            if (v == null) return;
-                            setState(() => _selectedFloor = v);
-                          },
-                        ),
-                      ),
+                  // Building/floor/unit selectors are only shown for resident users
+                  if (user.role != 'admin') ...[
+                    // Building selection (choose one of three buildings inline)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text('Building', style: Theme.of(context).textTheme.bodySmall),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: InputDecorator(
-                      decoration: const InputDecoration(labelText: 'Unit', border: OutlineInputBorder()),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _selectedUnit,
-                          items: const [
-                            DropdownMenuItem(value: '01', child: Text('01')),
-                            DropdownMenuItem(value: '02', child: Text('02')),
-                          ],
-                          onChanged: (v) {
-                            if (v == null) return;
-                            setState(() => _selectedUnit = v);
-                          },
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Alpha Building'),
+                          selected: _selectedBuilding == 'Alpha Building',
+                          onSelected: (_) => setState(() => _selectedBuilding = 'Alpha Building'),
                         ),
-                      ),
+                        ChoiceChip(
+                          label: const Text('Beta Building'),
+                          selected: _selectedBuilding == 'Beta Building',
+                          onSelected: (_) => setState(() => _selectedBuilding = 'Beta Building'),
+                        ),
+                        ChoiceChip(
+                          label: const Text('Central Building'),
+                          selected: _selectedBuilding == 'Central Building',
+                          onSelected: (_) => setState(() => _selectedBuilding = 'Central Building'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Floor + Unit selection (Floor: G..5, Unit: 01/02)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InputDecorator(
+                            decoration: const InputDecoration(labelText: 'Floor', border: OutlineInputBorder()),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _selectedFloor,
+                                items: const [
+                                  DropdownMenuItem(value: 'G', child: Text('G')),
+                                  DropdownMenuItem(value: '1', child: Text('1')),
+                                  DropdownMenuItem(value: '2', child: Text('2')),
+                                  DropdownMenuItem(value: '3', child: Text('3')),
+                                  DropdownMenuItem(value: '4', child: Text('4')),
+                                  DropdownMenuItem(value: '5', child: Text('5')),
+                                ],
+                                onChanged: (v) {
+                                  if (v == null) return;
+                                  setState(() => _selectedFloor = v);
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: InputDecorator(
+                            decoration: const InputDecoration(labelText: 'Unit', border: OutlineInputBorder()),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _selectedUnit,
+                                items: const [
+                                  DropdownMenuItem(value: '01', child: Text('01')),
+                                  DropdownMenuItem(value: '02', child: Text('02')),
+                                ],
+                                onChanged: (v) {
+                                  if (v == null) return;
+                                  setState(() => _selectedUnit = v);
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Save Button
+                  SizedBox(
+                    height: 50,
+                    child: FilledButton(
+                      onPressed: _saveProfile,
+                      child: Text('Save'),
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 32),
-            ],
-
-            // Save Button
-            SizedBox(
-              height: 50,
-              child: FilledButton(
-                onPressed: _saveProfile,
-                child: Text('Save'),
               ),
             ),
           ],

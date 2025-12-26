@@ -4,6 +4,7 @@ import '../utils/url_utils.dart';
 import 'package:intl/intl.dart';
 import '../models/announcement_model.dart';
 import '../services/firestore_service.dart'; // 引入 Service
+import '../widgets/glass_like_button.dart';
 
 class AnnouncementDetailScreen extends StatelessWidget {
   final AnnouncementModel announcement;
@@ -23,13 +24,20 @@ class AnnouncementDetailScreen extends StatelessWidget {
           appBar: AppBar(
             title: const Text('Announcement Details'),
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () {
-              // 每个人点赞次数不限制，直接调用
-              FirestoreService.incrementAnnouncementLike(currentData.id);
-            },
-            icon: const Icon(Icons.thumb_up),
-            label: Text('Like (${currentData.likeCount})'),
+          floatingActionButton: Padding(
+            padding: const EdgeInsets.only(right: 8.0, bottom: 8.0),
+            child: SizedBox(
+              // keep constraints similar to typical FAB extended
+              height: 52,
+              child: GlassLikeButton(
+                count: currentData.likeCount,
+                onTap: () {
+                  // 每个人点赞次数不限制，直接调用
+                  FirestoreService.incrementAnnouncementLike(currentData.id);
+                },
+                color: Colors.green.shade200,
+              ),
+            ),
           ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.only(bottom: 80), // 为 FAB 留出空间

@@ -187,115 +187,105 @@ class _AdminPackagesScreenState extends State<AdminPackagesScreen> {
   // --- 3. 包裹卡片 ---
   Widget _buildPackageCard(PackageModel package, UserModel? user) {
     final isReady = package.status == 'ready_for_pickup';
-    final statusColor = isReady ? const Color(0xFF10B981) : Colors.grey;
-    final statusText = isReady ? 'Ready' : 'Collected';
-    final courierInitial = package.courier.isNotEmpty ? package.courier[0].toUpperCase() : 'P';
+    
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: kCardRadius,
-        boxShadow: kCardShadow,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: kCardRadius,
-          onTap: () => _showActionSheet(context, package, user),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+    return GlassContainer(
+      borderRadius: kCardRadius,
+      blur: 12,
+      opacity: isReady ? 0.6 : 0.55,
+      padding: const EdgeInsets.all(16),
+      onTap: () => _showActionSheet(context, package, user),
+      child: Row(
+        children: [
+          // 左侧方形图标
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: Icon(Icons.inventory_2_outlined, color: Colors.black54, size: 26),
+            ),
+          ),
+          const SizedBox(width: 16),
+          // 中间信息（标题 + 描述 + 追踪 + 地址）
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 左侧图标容器
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Center(
-                    child: Text(
-                      courierInitial,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: primaryColor,
-                      ),
-                    ),
+                Text(
+                  package.courier,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
                 ),
-                const SizedBox(width: 16),
-                // 中间信息
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        package.courier,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        package.trackingNumber,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.person, size: 14, color: Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              '${user?.name ?? 'Unknown'} • ${user?.propertySimpleAddress ?? 'N/A'}',
-                              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 6),
+                Text(
+                  package.description,
+                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                // 右侧状态和时间
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                const SizedBox(height: 8),
+                Text(
+                  'Tracking: ${package.trackingNumber}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                ),
+                const SizedBox(height: 8),
+                Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                    Icon(Icons.place_outlined, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 6),
+                    Expanded(
                       child: Text(
-                        statusText,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        user?.propertySimpleAddress ?? package.location,
+                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      DateFormat('MMM dd').format(package.arrivedAt),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[400]),
-                    ),
-                    Text(
-                      DateFormat('HH:mm').format(package.arrivedAt),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[400]),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-        ),
+          // 右侧等待天数 badge
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isReady ? const Color(0xFFECFDF3) : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isReady ? const Color(0xFF10B981).withOpacity(0.2) : Colors.transparent),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.access_time, size: 14, color: isReady ? const Color(0xFF10B981) : Colors.grey),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${package.waitingDays}d',
+                      style: TextStyle(
+                        color: isReady ? const Color(0xFF10B981) : Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                DateFormat('MMM dd').format(package.arrivedAt),
+                style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
