@@ -212,8 +212,9 @@ class _DashboardTabState extends State<DashboardTab> {
                 final bills = finalBillsSnapshot.data ?? [];
                 final packages = packagesSnapshot.data ?? [];
 
-                final unpaidBills = bills.where((b) => b.status == 'unpaid').toList();
-                final unpaidTotal = unpaidBills.fold<double>(0, (sum, b) => sum + b.amount);
+                // 包含需要支付的账单：未付和逾期（逾期使用 totalAmount 包含罚金）
+                final payableBills = bills.where((b) => b.status == 'unpaid' || b.status == 'overdue').toList();
+                final payableTotal = payableBills.fold<double>(0, (sum, b) => sum + (b.isOverdue ? b.totalAmount : b.amount));
                 final readyPackages = packages.where((p) => p.status == 'ready_for_pickup').toList();
 
                 return Row(
@@ -221,13 +222,14 @@ class _DashboardTabState extends State<DashboardTab> {
                     Expanded(
                       child: _buildGlassStatCard(
                         context,
-                        'Unpaid Bills',
+                        // Display label in English
+                        'Amount Due',
                         finalBillsSnapshot.connectionState == ConnectionState.waiting
                             ? '...'
-                            : 'RM ${unpaidTotal.toStringAsFixed(0)}',
+                            : 'RM ${payableTotal.toStringAsFixed(0)}',
                         Icons.receipt_long_rounded,
                         Colors.orange,
-                        unpaidBills.isNotEmpty,
+                        payableBills.isNotEmpty,
                         onTap: () async {
                           await Navigator.pushNamed(context, AppRoutes.bills);
                           if (mounted) setState(() {});
@@ -323,9 +325,10 @@ class _DashboardTabState extends State<DashboardTab> {
       builder: (context, billsSnapshot) {
         final bills = billsSnapshot.data ?? [];
         final unpaidBills = bills.where((b) => b.status == 'unpaid').toList();
+        // Expected bills are considered those with a billingDate in the future
+        final expectedBills = bills.where((b) => b.billingDate.isAfter(DateTime.now())).toList();
 
-        if (unpaidBills.isEmpty) return const SizedBox.shrink();
-
+        // Always show the bulletin (non-clickable). Display counts and an English message.
         return Padding(
           padding: const EdgeInsets.only(bottom: 24),
           child: Column(
@@ -335,7 +338,7 @@ class _DashboardTabState extends State<DashboardTab> {
                 opacity: 0.8,
                 borderRadius: BorderRadius.circular(20),
                 child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
@@ -345,15 +348,39 @@ class _DashboardTabState extends State<DashboardTab> {
                     child: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
                   ),
                   title: const Text(
-                    'Unpaid Bills',
+                    'Bills',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
-                  subtitle: Text(
-                    'You have ${unpaidBills.length} unpaid bill(s)',
-                    style: const TextStyle(color: Colors.black54),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 2),
+                      Text(
+                        'You have ${unpaidBills.length} unpaid bill(s) and ${expectedBills.length} expected bill(s)',
+                        style: const TextStyle(color: Colors.black54),
+                      ),
+                      const SizedBox(height: 6),
+                      // Message priority: if no bills at all -> positive message,
+                      // else if there are expected bills -> warning message,
+                      // otherwise show a neutral reminder about unpaid bills.
+                      if (unpaidBills.isEmpty && expectedBills.isEmpty)
+                        const Text(
+                          'Very good, you have no bills to pay.',
+                          style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600),
+                        )
+                      else if (expectedBills.isNotEmpty)
+                        const Text(
+                          'Not great, please pay as soon as possible.',
+                          style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w600),
+                        )
+                      else
+                        Text(
+                          'You have ${unpaidBills.length} unpaid bill(s).',
+                          style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w600),
+                        ),
+                    ],
                   ),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.black26),
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.bills),
+                  // Make it non-clickable: remove trailing chevron and onTap
                 ),
               ),
             ],

@@ -68,7 +68,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
           ),
 
           // 底部支付按钮
-          if (bill.status == 'unpaid') ...[
+          // Allow payment for both unpaid and overdue bills (overdue should be payable like unpaid)
+          if (bill.status == 'unpaid' || bill.isOverdue) ...[
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -159,7 +160,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'RM ${bill.amount.toStringAsFixed(2)}',
+            // If the bill is overdue show the total amount (principal + penalty), otherwise show base amount
+            'RM ${(bill.isOverdue ? bill.totalAmount : bill.amount).toStringAsFixed(2)}',
             style: Theme.of(context).textTheme.displayMedium?.copyWith(
                   color: Colors.black87,
                   fontWeight: FontWeight.bold,
