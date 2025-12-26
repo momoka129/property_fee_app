@@ -416,6 +416,24 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                                   if (name.isEmpty || email.isEmpty) return;
 
                                   setStateDialog(() => isLoading = true);
+
+                                  // Check if email is already in use by another user (only for residents, not workers)
+                                  if (!isWorker) {
+                                    final emailExists = await FirestoreService.checkEmailExists(email, excludeUserId: user.id);
+                                    if (emailExists) {
+                                      setStateDialog(() => isLoading = false);
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('This email is already in use by another user.'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                      return;
+                                    }
+                                  }
+
                                   try {
                                     final payload = {
                                       'name': name,

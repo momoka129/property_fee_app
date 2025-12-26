@@ -476,6 +476,24 @@ class FirestoreService {
     return querySnapshot.docs.isNotEmpty;
   }
 
+  /// Check if an email already exists in the accounts collection
+  static Future<bool> checkEmailExists(String email,
+      {String? excludeUserId}) async {
+    Query query = _db.collection('accounts').where(
+        'email', isEqualTo: email);
+
+    final querySnapshot = await query.get();
+
+    // If excluding a user ID (for updates), filter out that user
+    if (excludeUserId != null) {
+      final filteredDocs = querySnapshot.docs.where((doc) =>
+      doc.id != excludeUserId);
+      return filteredDocs.isNotEmpty;
+    }
+
+    return querySnapshot.docs.isNotEmpty;
+  }
+
 
   // 在 FirestoreService 类内部添加以下方法
 // 确保导入了 BillModel
