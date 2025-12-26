@@ -9,6 +9,7 @@ import '../models/package_model.dart';
 import '../routes.dart';
 import 'edit_profile_screen.dart';
 import '../widgets/glass_container.dart'; // 引入 GlassContainer
+import 'admin_users_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -556,7 +557,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       {'icon': Icons.inventory_2_rounded, 'label': 'Parcels', 'route': AppRoutes.adminPackages, 'color': const Color(0xFF10B981)},
       {'icon': Icons.campaign_rounded, 'label': 'News', 'route': AppRoutes.adminAnnouncements, 'color': const Color(0xFFEC4899)},
       // Parking feature removed from project - action intentionally omitted
-      {'icon': Icons.people_rounded, 'label': 'Users', 'route': AppRoutes.adminHome, 'color': const Color(0xFF8B5CF6)},
+      {'icon': Icons.people_rounded, 'label': 'Users', 'route': 'users_screen', 'color': const Color(0xFF8B5CF6)},
     ];
 
     return GridView.builder(
@@ -571,7 +572,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         final color = action['color'] as Color;
         return InkWell(
           onTap: () {
-            if (action['label'] == 'Users') { } else { Navigator.pushNamed(context, action['route'] as String); }
+            if (action['label'] == 'Users') {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AdminUsersScreen())
+              );
+
+            } else { Navigator.pushNamed(context, action['route'] as String); }
           },
           borderRadius: BorderRadius.circular(16),
           child: Column(

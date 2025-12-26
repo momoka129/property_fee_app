@@ -711,62 +711,6 @@ class FirestoreService {
 
   // --- 新增/修改 Repair 相关方法 ---
 
-  /// 管理员：拒绝维修申请
-  static Future<void> rejectRepair(String repairId, String userId, String reason) async {
-    final batch = _db.batch();
-
-    // 1. 更新维修状态
-    final repairRef = _db.collection('repairs').doc(repairId);
-    batch.update(repairRef, {
-      'status': 'rejected',
-      'rejectionReason': reason,
-      'completedAt': Timestamp.now(), // 视为结束
-    });
-
-    // 2. 发送通知给用户
-    final notifRef = _db.collection('notifications').doc();
-    batch.set(notifRef, {
-      'userId': userId,
-      'title': 'Request Rejected',
-      'message': 'Your maintenance request was rejected. Reason: $reason',
-      'type': 'repair_update',
-      'relatedId': repairId,
-      'isRead': false,
-      'createdAt': Timestamp.now(),
-    });
-
-    await batch.commit();
-  }
-
-  /// 管理员：分配工人并开启维修 (变为 in_progress)
-  static Future<void> assignRepair(String repairId, String userId, String workerName, DateTime scheduledDate) async {
-    final batch = _db.batch();
-
-    // 1. 更新维修信息
-    final repairRef = _db.collection('repairs').doc(repairId);
-    batch.update(repairRef, {
-      'status': 'in_progress',
-      'workerName': workerName,
-      'scheduledDate': Timestamp.fromDate(scheduledDate),
-    });
-
-    // 2. 发送通知给用户
-    final notifRef = _db.collection('notifications').doc();
-    // 格式化日期显示
-    final dateStr = "${scheduledDate.year}-${scheduledDate.month}-${scheduledDate.day}";
-    batch.set(notifRef, {
-      'userId': userId,
-      'title': 'Worker Assigned',
-      'message': 'Worker $workerName has been assigned. Scheduled for $dateStr.',
-      'type': 'repair_update',
-      'relatedId': repairId,
-      'isRead': false,
-      'createdAt': Timestamp.now(),
-    });
-
-    await batch.commit();
-  }
-
   /// 用户/系统：取消维修申请
   static Future<void> cancelRepair(String repairId, {String? userId, bool isAuto = false}) async {
     // 如果是自动取消，需要 userId 来发通知
@@ -821,15 +765,126 @@ class FirestoreService {
     }
   }
 
-  /// 获取所有工人 (Role = 'worker')
-  /// 假设你在 User 管理中添加了 'worker' 角色
-  static Future<List<UserModel>> getWorkers() async {
-    final snapshot = await _db.collection('accounts')
-        .where('role', isEqualTo: 'worker')
-        .get();
-    return snapshot.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList();
+
+  // ================= NEW: 工人专用逻辑 (Workers Collection) =================
+
+  // 1. 获取工人列表 (从 'workers' 集合读取)
+  static Stream<List<UserModel>> getWorkersStream() {
+    return _db.collection('workers')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        // 强行把 role 设为 worker，以防万一
+        data['role'] = 'worker';
+        return UserModel.fromMap(data, doc.id);
+      }).toList();
+    });
   }
 
+  // 为了兼容 AdminRepairsScreen 的 Future 调用 (如果那边还没改)
+  static Future<List<UserModel>> getWorkers() async {
+    final snapshot = await _db.collection('workers').get();
+    return snapshot.docs.map((doc) => UserModel.fromMap(doc.data(), doc.id)).toList();
+  }
+
+  // 2. 添加新工人 (直接写库，不需要 Auth)
+  static Future<void> addWorker(Map<String, dynamic> data) async {
+    try {
+      // 自动生成 ID
+      final docRef = _db.collection('workers').doc();
+
+      final workerData = {
+        ...data,
+        'id': docRef.id,
+        'role': 'worker', // 标记角色
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+
+      await docRef.set(workerData);
+    } catch (e) {
+      print("Error adding worker: $e");
+      rethrow;
+    }
+  }
+
+  // 3. 删除工人
+  static Future<void> deleteWorker(String workerId) async {
+    try {
+      await _db.collection('workers').doc(workerId).delete();
+    } catch (e) {
+      print("Error deleting worker: $e");
+      rethrow;
+    }
+  }
+
+  // 在 FirestoreService 类中添加/更新这两个方法
+
+  // 1. 分配维修人员 (确保 status 变更为 in_progress)
+  static Future<void> assignRepair({
+    required String repairId,
+    required String userId,
+    required String workerId,
+    required String workerName,
+    required DateTime repairDate,
+  }) async {
+    final batch = _db.batch();
+
+    // 更新维修单
+    final repairRef = _db.collection('repairs').doc(repairId);
+    batch.update(repairRef, {
+      'workerId': workerId,
+      'workerName': workerName,
+      'repairDate': Timestamp.fromDate(repairDate),
+      'status': 'in_progress', // <--- 关键：确保这里写了 'in_progress'
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    // 发送通知 (App内通知)
+    final notifRef = _db.collection('notifications').doc();
+    batch.set(notifRef, {
+      'userId': userId,
+      'title': 'Request Scheduled',
+      'message': 'Worker $workerName assigned. Date: ${repairDate.toString().split(' ')[0]}',
+      'type': 'repair_update',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      'relatedId': repairId,
+    });
+
+    await batch.commit();
+  }
+
+  // 2. 拒绝维修请求 (新增方法)
+  static Future<void> rejectRepair({
+    required String repairId,
+    required String userId,
+    required String reason,
+  }) async {
+    final batch = _db.batch();
+
+    final repairRef = _db.collection('repairs').doc(repairId);
+    batch.update(repairRef, {
+      'status': 'rejected',
+      'rejectionReason': reason,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    final notifRef = _db.collection('notifications').doc();
+    batch.set(notifRef, {
+      'userId': userId,
+      'title': 'Request Rejected',
+      'message': 'Your request was rejected: $reason',
+      'type': 'repair_update',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      'relatedId': repairId,
+    });
+
+    await batch.commit();
+  }
 }
+
 
 

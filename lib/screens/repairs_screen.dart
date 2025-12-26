@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/repair_model.dart';
 import '../services/firestore_service.dart';
-import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/classical_dialog.dart';
 import '../widgets/glass_container.dart';
-
 
 class RepairsScreen extends StatefulWidget {
   const RepairsScreen({super.key});
@@ -205,15 +204,15 @@ class _RepairsScreenState extends State<RepairsScreen> {
                   Text(
                     repair.title,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     repair.description,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
+                      color: Colors.grey.shade600,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -236,8 +235,7 @@ class _RepairsScreenState extends State<RepairsScreen> {
                     ],
                   ),
 
-
-// 1. 展示额外信息 (Worker/Reason)
+                  // 1. 展示额外信息 (Worker/Reason)
                   if (repair.status == 'rejected' && repair.rejectionReason != null)
                     Container(
                       margin: const EdgeInsets.only(top: 8),
@@ -255,13 +253,14 @@ class _RepairsScreenState extends State<RepairsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text("Worker: ${repair.workerName}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                          if (repair.scheduledDate != null)
-                            Text("Scheduled: ${DateFormat('yyyy-MM-dd').format(repair.scheduledDate!)}", style: const TextStyle(color: Colors.blue)),
+                          // === 修正点：使用 repairDate 而不是 scheduledDate ===
+                          if (repair.repairDate != null)
+                            Text("Scheduled: ${DateFormat('yyyy-MM-dd').format(repair.repairDate!)}", style: const TextStyle(color: Colors.blue)),
                         ],
                       ),
                     ),
 
-// 2. 底部操作按钮栏
+                  // 2. 底部操作按钮栏
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -312,8 +311,8 @@ class _RepairsScreenState extends State<RepairsScreen> {
                 Text(
                   repair.title,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text('Description', style: Theme.of(context).textTheme.titleSmall),
@@ -376,25 +375,23 @@ class _RepairsScreenState extends State<RepairsScreen> {
 
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.3), // 背景遮罩稍微深一点，突出玻璃效果
+      barrierColor: Colors.black.withOpacity(0.3),
       builder: (context) => Dialog(
-        backgroundColor: Colors.transparent, // 关键：让 Dialog 本身透明
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        insetPadding: const EdgeInsets.all(20), // 调整弹窗与屏幕边缘的距离
+        insetPadding: const EdgeInsets.all(20),
         child: StatefulBuilder(
           builder: (context, setState) {
             return GlassContainer(
               borderRadius: BorderRadius.circular(24),
-              opacity: 0.85, // 稍微提高一点不透明度，确保表单文字清晰可见
-              blur: 20,      // 磨砂程度
-              padding: const EdgeInsets.all(24), // 内部内边距
+              opacity: 0.85,
+              blur: 20,
+              padding: const EdgeInsets.all(24),
               child: SingleChildScrollView(
-                // 使用 SingleChildScrollView 防止键盘弹出时溢出
                 child: Column(
-                  mainAxisSize: MainAxisSize.min, // 包裹内容高度
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // --- 1. 标题区域 ---
                     const Center(
                       child: Text(
                         'New Repair Request',
@@ -407,15 +404,12 @@ class _RepairsScreenState extends State<RepairsScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-
-                    // --- 2. 表单区域 ---
-                    // Title Input
                     TextField(
                       controller: titleController,
                       decoration: InputDecoration(
                         labelText: 'Title *',
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.5), // 输入框半透明背景
+                        fillColor: Colors.white.withOpacity(0.5),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -425,8 +419,6 @@ class _RepairsScreenState extends State<RepairsScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // Description Input
                     TextField(
                       controller: descriptionController,
                       decoration: InputDecoration(
@@ -443,8 +435,6 @@ class _RepairsScreenState extends State<RepairsScreen> {
                       maxLines: 3,
                     ),
                     const SizedBox(height: 16),
-
-                    // Location Dropdown
                     DropdownButtonFormField<String>(
                       value: selectedLocation,
                       decoration: InputDecoration(
@@ -457,7 +447,7 @@ class _RepairsScreenState extends State<RepairsScreen> {
                         ),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       ),
-                      dropdownColor: Colors.white, // 确保下拉菜单背景是纯白，防止看不清
+                      dropdownColor: Colors.white,
                       items: const [
                         DropdownMenuItem(value: 'Kitchen', child: Text('Kitchen')),
                         DropdownMenuItem(value: 'Bedroom', child: Text('Bedroom')),
@@ -472,8 +462,6 @@ class _RepairsScreenState extends State<RepairsScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-
-                    // Priority Dropdown
                     DropdownButtonFormField<String>(
                       value: selectedPriority,
                       decoration: InputDecoration(
@@ -499,12 +487,9 @@ class _RepairsScreenState extends State<RepairsScreen> {
                       },
                     ),
                     const SizedBox(height: 30),
-
-                    // --- 3. 按钮区域 ---
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        // Cancel Button
                         TextButton(
                           onPressed: () => Navigator.pop(context),
                           style: TextButton.styleFrom(
@@ -514,8 +499,6 @@ class _RepairsScreenState extends State<RepairsScreen> {
                           child: const Text('Cancel'),
                         ),
                         const SizedBox(width: 8),
-
-                        // Submit Button
                         FilledButton(
                           onPressed: () async {
                             if (titleController.text.isEmpty || descriptionController.text.isEmpty) {
@@ -526,7 +509,6 @@ class _RepairsScreenState extends State<RepairsScreen> {
                             }
 
                             try {
-                              // 创建新的报修记录
                               final repairData = {
                                 'title': titleController.text,
                                 'description': descriptionController.text,
@@ -563,7 +545,7 @@ class _RepairsScreenState extends State<RepairsScreen> {
                             }
                           },
                           style: FilledButton.styleFrom(
-                            backgroundColor: Colors.black87, // 或者使用你的主题色
+                            backgroundColor: Colors.black87,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -585,18 +567,15 @@ class _RepairsScreenState extends State<RepairsScreen> {
     );
   }
 
-  // --- Helper Methods to add in _RepairsScreenState ---
-
   void _confirmCancel(BuildContext context, RepairModel repair) {
     showDialog(
       context: context,
       builder: (context) => ClassicalDialog(
         title: 'Cancel Request?',
         content: 'Are you sure you want to cancel this request?',
-        cancelText: 'No',           // 对应 AlertDialog 的第一个按钮
-        confirmText: 'Cancel', // 对应 AlertDialog 的第二个按钮
+        cancelText: 'No',
+        confirmText: 'Cancel',
         onConfirm: () {
-          // 这里的逻辑保持不变
           FirestoreService.cancelRepair(repair.id);
           Navigator.pop(context);
         },
@@ -613,7 +592,6 @@ class _RepairsScreenState extends State<RepairsScreen> {
         cancelText: 'No',
         confirmText: 'Yes',
         onConfirm: () {
-          // 这里的逻辑保持不变
           FirestoreService.completeRepairByUser(repair.id);
           Navigator.pop(context);
         },
@@ -621,4 +599,3 @@ class _RepairsScreenState extends State<RepairsScreen> {
     );
   }
 }
-
