@@ -317,7 +317,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                         _buildStatCard(title: 'Total Revenue', value: 'RM ${totalRevenue.toStringAsFixed(0)}', icon: Icons.monetization_on_outlined, themeColor: successColor, width: width, isMain: true),
                         _buildStatCard(title: 'Overdue Bills', value: '$overdueCount', icon: Icons.error_outline, themeColor: errorColor, width: width),
                         _buildStatCard(title: 'Pending Repairs', value: '$pendingRepairs', icon: Icons.home_repair_service_outlined, themeColor: warningColor, width: width),
-                        _buildStatCard(title: 'Packages', value: '$activePackages', icon: Icons.inventory_2_outlined, themeColor: primaryColor, width: width),
+                        _buildStatCard(title: 'Collected Parcels', value: '$activePackages', icon: Icons.inventory_2_outlined, themeColor: primaryColor, width: width),
                       ],
                     );
                   },
@@ -353,7 +353,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 ),
                 child: Icon(icon, color: isMain ? Colors.white : themeColor, size: 20),
               ),
-              if (!isMain) Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey[300]),
             ],
           ),
           const SizedBox(height: 16),
@@ -554,7 +553,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     final actions = [
       {'icon': Icons.receipt_long_rounded, 'label': 'Bills', 'route': AppRoutes.adminBills, 'color': const Color(0xFF6366F1)},
       {'icon': Icons.handyman_rounded, 'label': 'Repairs', 'route': AppRoutes.adminRepairs, 'color': const Color(0xFFF59E0B)},
-      {'icon': Icons.inventory_2_rounded, 'label': 'Parcels', 'route': AppRoutes.adminPackages, 'color': const Color(0xFF10B981)},
+      {'icon': Icons.inventory_2_rounded, 'label': 'Collected Parcels', 'route': AppRoutes.adminPackages, 'color': const Color(0xFF10B981)},
       {'icon': Icons.campaign_rounded, 'label': 'News', 'route': AppRoutes.adminAnnouncements, 'color': const Color(0xFFEC4899)},
       // Parking feature removed from project - action intentionally omitted
       {'icon': Icons.people_rounded, 'label': 'Users', 'route': 'users_screen', 'color': const Color(0xFF8B5CF6)},
