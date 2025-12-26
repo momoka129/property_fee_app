@@ -13,21 +13,34 @@ class AdminAnnouncementsScreen extends StatefulWidget {
 }
 
 class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
+  // 保持与 AdminHome 一致的背景渐变
   final Color bgGradientStart = const Color(0xFFF3F4F6);
   final Color bgGradientEnd = const Color(0xFFE5E7EB);
-  final Color cardColor = Colors.white;
-  final BorderRadius kCardRadius = BorderRadius.circular(20);
-  final List<BoxShadow> kCardShadow = [
-    BoxShadow(
-      color: const Color(0xFF1F2937).withOpacity(0.06),
-      blurRadius: 15,
-      offset: const Offset(0, 5),
-    ),
-  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // 扩展 Body 到顶部，让渐变背景覆盖全屏 (包括 AppBar 区域)
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(
+          'Announcements',
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+        ),
+        leading: IconButton(
+          icon:  Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white54,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.arrow_back_ios_new, size: 18, color: Colors.black87),
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -39,7 +52,8 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              _buildHeader(context),
+              // 移除旧的 Header，直接使用 AppBar 或在此处添加额外空间
+              const SizedBox(height: 10),
               Expanded(child: _buildAnnouncementList()),
             ],
           ),
@@ -57,34 +71,32 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        children: [
-          InkWell(
-            onTap: () => Navigator.pop(context),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: kCardShadow),
-              child: const Icon(Icons.arrow_back_ios_new, size: 18, color: Colors.black87),
-            ),
-          ),
-          const SizedBox(width: 16),
-          const Text('Announcements', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildAnnouncementList() {
     return StreamBuilder<List<AnnouncementModel>>(
       stream: FirestoreService.announcementsStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
         final items = snapshot.data ?? [];
-        if (items.isEmpty) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.notifications_off_outlined, size: 64, color: Colors.grey[300]), const SizedBox(height: 16), Text('No announcements posted', style: TextStyle(color: Colors.grey[500]))]));
+        if (items.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GlassContainer(
+                  opacity: 0.5,
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    children: [
+                      Icon(Icons.notifications_off_outlined, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text('No announcements posted', style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+                    ],
+                  ),
+                )
+              ],
+            ),
+          );
+        }
 
         items.sort((a, b) {
           final aPinned = a.isPinned ? 1 : 0; final bPinned = b.isPinned ? 1 : 0;
@@ -111,49 +123,76 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
     final dateDay = DateFormat('dd').format(ann.publishedAt);
     final dateMonth = DateFormat('MMM').format(ann.publishedAt);
 
-    return Container(
-      decoration: BoxDecoration(color: cardColor, borderRadius: kCardRadius, boxShadow: kCardShadow),
-      child: ClipRRect(
-        borderRadius: kCardRadius,
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                width: 70,
-                decoration: BoxDecoration(color: theme.color.withOpacity(0.1), border: Border(right: BorderSide(color: theme.color.withOpacity(0.2)))),
-                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text(dateDay, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: theme.color)), Text(dateMonth.toUpperCase(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: theme.color.withOpacity(0.8)))]),
+    return GlassContainer(
+      opacity: 0.8, // 玻璃透明度
+      padding: EdgeInsets.zero, // 设置为0，以便让左侧的日期条填满边缘
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 左侧日期条
+            Container(
+              width: 70,
+              decoration: BoxDecoration(
+                color: theme.color.withOpacity(0.1),
+                border: Border(right: BorderSide(color: theme.color.withOpacity(0.1))),
               ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: theme.color, borderRadius: BorderRadius.circular(6)), child: Text(ann.categoryDisplay, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white))),
-                        const Spacer(),
-                        if (ann.isPinned) const Padding(padding: EdgeInsets.only(right: 8.0), child: Icon(Icons.push_pin, size: 16, color: Colors.orange)),
-                        if (ann.priority == 'high') Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(border: Border.all(color: Colors.red), borderRadius: BorderRadius.circular(4)), child: const Text('URGENT', style: TextStyle(fontSize: 8, color: Colors.red, fontWeight: FontWeight.bold))),
-                      ]),
-                      const SizedBox(height: 10),
-                      Text(ann.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87), maxLines: 2, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 6),
-                      if (ann.content.isNotEmpty) Text(ann.content, style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.4), maxLines: 2, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 12),
-                      const Divider(height: 1),
-                      const SizedBox(height: 8),
-                      Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                        _buildActionButton(icon: Icons.edit_outlined, color: Colors.blue, onTap: () => _navigateToEdit(ann)),
-                        const SizedBox(width: 8),
-                        _buildActionButton(icon: Icons.delete_outline, color: Colors.red, onTap: () => _confirmDelete(ann)),
-                      ]),
-                    ],
-                  ),
+              child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(dateDay, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: theme.color)),
+                    Text(dateMonth.toUpperCase(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: theme.color.withOpacity(0.8)))
+                  ]
+              ),
+            ),
+            // 右侧内容
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(color: theme.color, borderRadius: BorderRadius.circular(6)),
+                          child: Text(ann.categoryDisplay, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white))
+                      ),
+                      const Spacer(),
+                      if (ann.isPinned)
+                        Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), shape: BoxShape.circle),
+                                child: const Icon(Icons.push_pin, size: 14, color: Colors.orange)
+                            )
+                        ),
+                      if (ann.priority == 'high')
+                        Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(border: Border.all(color: Colors.red), borderRadius: BorderRadius.circular(4)),
+                            child: const Text('URGENT', style: TextStyle(fontSize: 8, color: Colors.red, fontWeight: FontWeight.bold))
+                        ),
+                    ]),
+                    const SizedBox(height: 10),
+                    Text(ann.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 6),
+                    if (ann.content.isNotEmpty) Text(ann.content, style: TextStyle(fontSize: 13, color: Colors.grey[700], height: 1.4), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 12),
+                    // 分割线改用半透明
+                    Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
+                    const SizedBox(height: 8),
+                    Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                      _buildActionButton(icon: Icons.edit_outlined, color: Colors.blue, onTap: () => _navigateToEdit(ann)),
+                      const SizedBox(width: 8),
+                      _buildActionButton(icon: Icons.delete_outline, color: Colors.red, onTap: () => _confirmDelete(ann)),
+                    ]),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -161,8 +200,13 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
 
   Widget _buildActionButton({required IconData icon, required Color color, required VoidCallback onTap}) {
     return InkWell(
-      onTap: onTap, borderRadius: BorderRadius.circular(8),
-      child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)), child: Icon(icon, size: 18, color: color)),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+          child: Icon(icon, size: 18, color: color)
+      ),
     );
   }
 
@@ -191,7 +235,6 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
             'priority': ann.priority,
             'status': ann.status,
             'publishedAt': ann.publishedAt,
-            // pass the actual expireAt from the model (may be null)
             'expireAt': (ann as dynamic).expireAt,
             'isPinned': ann.isPinned,
             'author': ann.author,
@@ -209,8 +252,9 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
       builder: (ctx) => Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        insetPadding: const EdgeInsets.all(24),
         child: GlassContainer(
-          opacity: 0.85,
+          opacity: 0.9,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -222,7 +266,7 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
               const SizedBox(height: 16),
               const Text("Delete Announcement", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text("This action implies permanent deletion.", style: TextStyle(color: Colors.grey[700])),
+              Text("This action implies permanent deletion.", style: TextStyle(color: Colors.grey[700]), textAlign: TextAlign.center),
               const SizedBox(height: 24),
               Row(children: [
                 Expanded(child: TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel"))),

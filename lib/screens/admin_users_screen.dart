@@ -31,7 +31,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // 监听 Tab 切换以刷新 FAB 按钮的显示状态
     _tabController.addListener(() {
       setState(() {});
     });
@@ -43,7 +42,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
     super.dispose();
   }
 
-  // ==================== 1. 添加工人的 Glass 弹窗 ====================
+  // ==================== 1. 添加工人的 Glass 弹窗 (保持不变，但为了完整性列出) ====================
   void _showAddWorkerDialog() {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
@@ -51,17 +50,17 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
 
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.3), // 背景遮罩稍微深一点，突出玻璃效果
+      barrierColor: Colors.black.withOpacity(0.3),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return Dialog(
-              backgroundColor: Colors.transparent, // 背景透明，交给 GlassContainer
+              backgroundColor: Colors.transparent,
               elevation: 0,
               insetPadding: const EdgeInsets.all(20),
               child: GlassContainer(
                 width: double.infinity,
-                opacity: 0.9, // 不透明度高一点，保证内容清晰
+                opacity: 0.9,
                 blur: 20,
                 borderRadius: BorderRadius.circular(24),
                 padding: const EdgeInsets.all(24),
@@ -69,7 +68,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 标题
                     Row(
                       children: [
                         Container(
@@ -83,33 +81,23 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                         const SizedBox(width: 16),
                         const Text(
                           'Add New Worker',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
-
-                    // 输入框 Name
                     _buildGlassTextField(
                       controller: nameController,
                       label: 'Worker Name',
                       icon: Icons.badge_outlined,
                     ),
                     const SizedBox(height: 16),
-
-                    // 输入框 Phone (使用 MalaysiaPhoneInput 确保9位数格式)
                     mp.MalaysiaPhoneInput(
                       controller: phoneController,
                       label: 'Phone Number',
-                      required: true, // 工人电话为必填
+                      required: true,
                     ),
                     const SizedBox(height: 16),
-
-                    // 提示文字
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -131,8 +119,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                       ),
                     ),
                     const SizedBox(height: 24),
-
-                    // 按钮组
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -142,11 +128,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                         ),
                         const SizedBox(width: 12),
                         isLoading
-                            ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                             : FilledButton(
                           style: FilledButton.styleFrom(
                             backgroundColor: primaryColor,
@@ -155,31 +137,22 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                           ),
                           onPressed: () async {
                             if (nameController.text.isEmpty) return;
-
                             setStateDialog(() => isLoading = true);
-
                             try {
-                              // 核心逻辑：调用 addWorker (存入 workers 集合)
                               await FirestoreService.addWorker({
                                 'name': nameController.text.trim(),
                                 'phoneNumber': phoneController.text.trim(),
                                 'role': 'worker',
                                 'propertySimpleAddress': 'Staff',
-                                // 不传 email，因为不需要登录
                               });
-
                               if (mounted) {
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Worker added successfully!'),
-                                    backgroundColor: Colors.green,
-                                  ),
+                                  const SnackBar(content: Text('Worker added successfully!'), backgroundColor: Colors.green),
                                 );
                               }
                             } catch (e) {
                               setStateDialog(() => isLoading = false);
-                              // 错误提示
                             }
                           },
                           child: const Text('Confirm Add'),
@@ -210,7 +183,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
         labelText: label,
         prefixIcon: Icon(icon, color: primaryColor.withOpacity(0.7)),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.5), // 半透明白色底
+        fillColor: Colors.white.withOpacity(0.5),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -221,67 +194,111 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
     );
   }
 
-  // ==================== 2. 删除确认弹窗 ====================
+  // ==================== 2. 删除确认弹窗 (已修改为 Glass 风格) ====================
   void _confirmDelete(String id, String name, bool isWorker) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isWorker ? 'Delete Worker' : 'Delete Resident'),
-        content: Text('Are you sure you want to delete "$name"?\nThis action cannot be undone.'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context); // 先关闭弹窗
-              try {
-                if (isWorker) {
-                  await FirestoreService.deleteWorker(id); // 删除工人
-                } else {
-                  await FirestoreService.deleteUser(id); // 删除住户
-                }
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Deleted successfully')),
-                  );
-                }
-              } catch (e) {
-                // handle error
-              }
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+      barrierColor: Colors.black.withOpacity(0.3), // 背景遮罩
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent, // 透明背景
+        elevation: 0,
+        insetPadding: const EdgeInsets.all(20),
+        child: GlassContainer(
+          opacity: 0.9,
+          borderRadius: BorderRadius.circular(24),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.delete_forever_rounded, size: 32, color: Colors.red),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                isWorker ? 'Delete Worker' : 'Delete Resident',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Are you sure you want to delete "$name"?\nThis action cannot be undone.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(context); // 先关闭弹窗
+                        try {
+                          if (isWorker) {
+                            await FirestoreService.deleteWorker(id);
+                          } else {
+                            await FirestoreService.deleteUser(id);
+                          }
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Deleted successfully'), backgroundColor: Colors.red),
+                            );
+                          }
+                        } catch (e) {
+                          // handle error
+                        }
+                      },
+                      child: const Text('Delete'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  // ==================== 2.5 编辑用户弹窗 ====================
+  // ==================== 2.5 编辑用户弹窗 (已修改为 Glass 风格) ====================
   void _showEditUserDialog(UserModel user, bool isWorker) {
     final nameController = TextEditingController(text: user.name);
     final emailController = TextEditingController(text: user.email);
     final phoneController = TextEditingController(text: user.phoneNumber ?? '');
-    // Address selection state (use same options as RegisterScreen)
+
     String selectedBuilding = 'Alpha Building';
     String selectedFloor = 'G';
     String selectedUnit = '01';
 
-    // Try parse existing propertySimpleAddress like "Alpha Building G01"
+    // 解析地址逻辑保持不变
     try {
       final addr = user.propertySimpleAddress;
       if (addr.isNotEmpty) {
-        // split by space: ["Alpha", "Building", "G01"] or "Alpha Building G01"
         final parts = addr.split(' ');
         if (parts.length >= 3) {
           selectedBuilding = '${parts[0]} ${parts[1]}';
           final last = parts.sublist(2).join(' ');
-          // last expected like G01
           if (last.isNotEmpty) {
             selectedFloor = last[0];
             selectedUnit = last.substring(1);
           }
         } else {
-          // fallback: attempt to extract floor+unit at end
           final match = RegExp(r'([A-Za-z ]+)\s+([G|0-9][0-9])\$').firstMatch(addr);
           if (match != null) {
             selectedBuilding = match.group(1)!.trim();
@@ -301,226 +318,185 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
       builder: (context) {
         return StatefulBuilder(builder: (context, setStateDialog) {
           return Dialog(
+            backgroundColor: Colors.transparent, // 透明背景
+            elevation: 0,
             insetPadding: const EdgeInsets.all(20),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
+            child: GlassContainer(
+              opacity: 0.9,
+              borderRadius: BorderRadius.circular(24),
+              padding: const EdgeInsets.all(24), // 内边距增加
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      isWorker ? 'Edit Worker' : 'Edit Resident',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    // 标题部分
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.edit_rounded, color: primaryColor, size: 24),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          isWorker ? 'Edit Worker' : 'Edit Resident',
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
+
                     // Name
                     _buildGlassTextField(controller: nameController, label: 'Name', icon: Icons.badge_outlined),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     // Email
                     _buildGlassTextField(controller: emailController, label: 'Email', icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
-                    const SizedBox(height: 12),
-                    // Phone (使用 MalaysiaPhoneInput 确保9位数格式)
+                    const SizedBox(height: 16),
+                    // Phone
                     if (isWorker) ...[
-                      mp.MalaysiaPhoneInput(
-                        controller: phoneController,
-                        label: 'Phone Number',
-                        required: true, // 工人电话必填
-                      ),
+                      mp.MalaysiaPhoneInput(controller: phoneController, label: 'Phone Number', required: true),
                     ] else ...[
-                      mp.MalaysiaPhoneInput(
-                        controller: phoneController,
-                        label: 'Phone Number',
-                        required: false, // 住户电话为可选
-                      ),
+                      mp.MalaysiaPhoneInput(controller: phoneController, label: 'Phone Number', required: false),
                     ],
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
 
-                    // Address selection (only for residents). For workers, keep as static text.
+                    // Address selection
                     if (!isWorker) ...[
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: Text('Building', style: Theme.of(context).textTheme.bodySmall),
+                        child: Text('Building', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w600)),
                       ),
                       Wrap(
                         spacing: 8,
+                        runSpacing: 8,
                         children: [
-                          ChoiceChip(
-                            label: const Text('Alpha Building'),
-                            selected: selectedBuilding == 'Alpha Building',
-                            onSelected: (_) => setStateDialog(() => selectedBuilding = 'Alpha Building'),
-                          ),
-                          ChoiceChip(
-                            label: const Text('Beta Building'),
-                            selected: selectedBuilding == 'Beta Building',
-                            onSelected: (_) => setStateDialog(() => selectedBuilding = 'Beta Building'),
-                          ),
-                          ChoiceChip(
-                            label: const Text('Central Building'),
-                            selected: selectedBuilding == 'Central Building',
-                            onSelected: (_) => setStateDialog(() => selectedBuilding = 'Central Building'),
-                          ),
+                          _buildGlassChoiceChip('Alpha Building', selectedBuilding, (val) => setStateDialog(() => selectedBuilding = val)),
+                          _buildGlassChoiceChip('Beta Building', selectedBuilding, (val) => setStateDialog(() => selectedBuilding = val)),
+                          _buildGlassChoiceChip('Central Building', selectedBuilding, (val) => setStateDialog(() => selectedBuilding = val)),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
 
-                      // Floor + Unit selection
                       Row(
                         children: [
                           Expanded(
-                            child: InputDecorator(
-                              decoration: const InputDecoration(labelText: 'Floor', border: OutlineInputBorder()),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: selectedFloor,
-                                  items: const [
-                                    DropdownMenuItem(value: 'G', child: Text('G')),
-                                    DropdownMenuItem(value: '1', child: Text('1')),
-                                    DropdownMenuItem(value: '2', child: Text('2')),
-                                    DropdownMenuItem(value: '3', child: Text('3')),
-                                    DropdownMenuItem(value: '4', child: Text('4')),
-                                    DropdownMenuItem(value: '5', child: Text('5')),
-                                  ],
-                                  onChanged: (v) {
-                                    if (v == null) return;
-                                    setStateDialog(() => selectedFloor = v);
-                                  },
-                                ),
-                              ),
+                            child: _buildGlassDropdown(
+                              label: 'Floor',
+                              value: selectedFloor,
+                              items: ['G', '1', '2', '3', '4', '5'],
+                              onChanged: (v) => setStateDialog(() => selectedFloor = v!),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: InputDecorator(
-                              decoration: const InputDecoration(labelText: 'Unit', border: OutlineInputBorder()),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: selectedUnit,
-                                  items: const [
-                                    DropdownMenuItem(value: '01', child: Text('01')),
-                                    DropdownMenuItem(value: '02', child: Text('02')),
-                                  ],
-                                  onChanged: (v) {
-                                    if (v == null) return;
-                                    setStateDialog(() => selectedUnit = v);
-                                  },
-                                ),
-                              ),
+                            child: _buildGlassDropdown(
+                              label: 'Unit',
+                              value: selectedUnit,
+                              items: ['01', '02'],
+                              onChanged: (v) => setStateDialog(() => selectedUnit = v!),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 12),
                     ] else ...[
-                      // For workers show current address (read-only)
                       Padding(
                         padding: const EdgeInsets.only(top: 8, bottom: 12),
-                        child: Text('Address: ${user.propertySimpleAddress}', style: TextStyle(color: Colors.grey[700])),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                          child: Row(
+                            children: [
+                              Icon(Icons.location_on_outlined, color: Colors.grey[600], size: 16),
+                              const SizedBox(width: 8),
+                              Text('Address: ${user.propertySimpleAddress}', style: TextStyle(color: Colors.grey[800])),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
 
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: TextStyle(color: Colors.grey[600]))),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+                        ),
                         const SizedBox(width: 12),
                         isLoading
                             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                             : FilledButton(
-                                onPressed: () async {
-                                  final name = nameController.text.trim();
-                                  final email = emailController.text.trim();
-                                  final phone = phoneController.text.trim();
-                                  if (name.isEmpty || email.isEmpty) return;
+                          onPressed: () async {
+                            // 保存逻辑保持不变
+                            final name = nameController.text.trim();
+                            final email = emailController.text.trim();
+                            final phone = phoneController.text.trim();
+                            if (name.isEmpty || email.isEmpty) return;
 
-                                  setStateDialog(() => isLoading = true);
+                            setStateDialog(() => isLoading = true);
 
-                                  // Check if address is already in use by another user (only for residents, not workers)
-                                  if (!isWorker) {
-                                    final composedAddress = '$selectedBuilding ${selectedFloor}${selectedUnit}';
-                                    final addressExists = await FirestoreService.checkAddressExists(composedAddress, excludeUserId: user.id);
-                                    if (addressExists) {
-                                      setStateDialog(() => isLoading = false);
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('This property address is already in use by another resident.'),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                      }
-                                      return;
-                                    }
-                                  }
+                            if (!isWorker) {
+                              final composedAddress = '$selectedBuilding ${selectedFloor}${selectedUnit}';
+                              final addressExists = await FirestoreService.checkAddressExists(composedAddress, excludeUserId: user.id);
+                              if (addressExists) {
+                                setStateDialog(() => isLoading = false);
+                                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Address already in use'), backgroundColor: Colors.red));
+                                return;
+                              }
+                            }
 
-                                  // Check if email is already in use by another user (only for residents, not workers)
-                                  if (!isWorker) {
-                                    final emailExists = await FirestoreService.checkEmailExists(email, excludeUserId: user.id);
-                                    if (emailExists) {
-                                      setStateDialog(() => isLoading = false);
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('This email is already in use by another user.'),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                      }
-                                      return;
-                                    }
-                                  }
+                            if (!isWorker) {
+                              final emailExists = await FirestoreService.checkEmailExists(email, excludeUserId: user.id);
+                              if (emailExists) {
+                                setStateDialog(() => isLoading = false);
+                                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email already in use'), backgroundColor: Colors.red));
+                                return;
+                              }
+                            }
 
-                                  // Check if phone number is already in use by another user (all account types)
-                                  if (phone.isNotEmpty) {
-                                    final phoneExists = await FirestoreService.checkPhoneExists(phone, excludeUserId: user.id);
-                                    if (phoneExists) {
-                                      setStateDialog(() => isLoading = false);
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('This phone number is already in use by another account.'),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                      }
-                                      return;
-                                    }
-                                  }
+                            if (phone.isNotEmpty) {
+                              final phoneExists = await FirestoreService.checkPhoneExists(phone, excludeUserId: user.id);
+                              if (phoneExists) {
+                                setStateDialog(() => isLoading = false);
+                                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Phone number already in use'), backgroundColor: Colors.red));
+                                return;
+                              }
+                            }
 
-                                  try {
-                                    final payload = {
-                                      'name': name,
-                                      'email': email,
-                                      'phoneNumber': phone,
-                                      // DO NOT include 'role' or 'avatar' here
-                                    };
+                            try {
+                              final payload = {'name': name, 'email': email, 'phoneNumber': phone};
+                              if (!isWorker) {
+                                payload['propertySimpleAddress'] = '$selectedBuilding ${selectedFloor}${selectedUnit}';
+                              }
 
-                                    if (!isWorker) {
-                                      final composedAddress = '$selectedBuilding ${selectedFloor}${selectedUnit}';
-                                      payload['propertySimpleAddress'] = composedAddress;
-                                    }
+                              if (isWorker) {
+                                await FirestoreService.updateWorker(user.id, payload);
+                              } else {
+                                await FirestoreService.updateUser(user.id, payload);
+                              }
 
-                                    if (isWorker) {
-                                      await FirestoreService.updateWorker(user.id, payload);
-                                    } else {
-                                      await FirestoreService.updateUser(user.id, payload);
-                                    }
-
-                                    if (mounted) {
-                                      Navigator.pop(context);
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved successfully'), backgroundColor: Colors.green));
-                                      setState(() {}); // refresh lists
-                                    }
-                                  } catch (e) {
-                                    setStateDialog(() => isLoading = false);
-                                    // optionally show error
-                                  }
-                                },
-                                child: const Text('Save'),
-                                style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
-                              ),
+                              if (mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved successfully'), backgroundColor: Colors.green));
+                                setState(() {});
+                              }
+                            } catch (e) {
+                              setStateDialog(() => isLoading = false);
+                            }
+                          },
+                          style: FilledButton.styleFrom(
+                              backgroundColor: primaryColor,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)
+                          ),
+                          child: const Text('Save'),
+                        ),
                       ],
                     ),
                   ],
@@ -533,12 +509,58 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
     );
   }
 
-  // ==================== 3. 主页面构建 ====================
+  // 辅助组件：Glass 风格的 ChoiceChip
+  Widget _buildGlassChoiceChip(String label, String selectedValue, Function(String) onSelected) {
+    final isSelected = selectedValue == label;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (_) => onSelected(label),
+      selectedColor: primaryColor.withOpacity(0.2),
+      backgroundColor: Colors.white.withOpacity(0.5),
+      labelStyle: TextStyle(
+        color: isSelected ? primaryColor : Colors.grey[700],
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: isSelected ? primaryColor : Colors.transparent),
+      ),
+      elevation: 0,
+    );
+  }
+
+  // 辅助组件：Glass 风格的 Dropdown
+  Widget _buildGlassDropdown({
+    required String label,
+    required String value,
+    required List<String> items,
+    required Function(String?) onChanged,
+  }) {
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.5),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+          onChanged: onChanged,
+          icon: Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey[600]),
+        ),
+      ),
+    );
+  }
+
+  // ==================== 3. 主页面构建 (保持不变) ====================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      // 只有在 Workers 标签页才显示 FAB
       floatingActionButton: _tabController.index == 1
           ? FloatingActionButton.extended(
         onPressed: _showAddWorkerDialog,
@@ -559,7 +581,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
         child: SafeArea(
           child: Column(
             children: [
-              // 自定义 Header
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
                 child: Row(
@@ -587,8 +608,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                   ],
                 ),
               ),
-
-              // 自定义 TabBar
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 20),
                 padding: const EdgeInsets.all(4),
@@ -619,14 +638,12 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                 ),
               ),
               const SizedBox(height: 20),
-
-              // 列表内容
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildResidentsList(), // 住户列表 (FutureBuilder)
-                    _buildWorkersList(),   // 工人列表 (StreamBuilder - 实时更新)
+                    _buildResidentsList(),
+                    _buildWorkersList(),
                   ],
                 ),
               ),
@@ -637,10 +654,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
     );
   }
 
-  // 构建住户列表
   Widget _buildResidentsList() {
     return FutureBuilder<List<UserModel>>(
-      future: FirestoreService.getUsers(), // 假设这是获取住户的方法
+      future: FirestoreService.getUsers(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -662,10 +678,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
     );
   }
 
-  // 构建工人列表 (使用 StreamBuilder 实现实时刷新)
   Widget _buildWorkersList() {
     return StreamBuilder<List<UserModel>>(
-      // 注意：这里必须使用 Stream 才能看到刚刚添加的数据
       stream: FirestoreService.getWorkersStream(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -681,7 +695,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
         }
 
         return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 80), // 底部留出 FAB 的空间
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
           itemCount: workers.length,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
@@ -692,7 +706,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
     );
   }
 
-  // 通用列表卡片样式
   Widget _buildUserCard(UserModel user, {required bool isWorker}) {
     return Container(
       decoration: BoxDecoration(
@@ -717,10 +730,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
             backgroundColor: isWorker ? Colors.orange.shade50 : Colors.blue.shade50,
             child: _getUserAvatarImageProvider(user) == null
                 ? Icon(
-                    isWorker ? Icons.engineering : Icons.person,
-                    color: isWorker ? Colors.orange : primaryColor,
-                    size: 24,
-                  )
+              isWorker ? Icons.engineering : Icons.person,
+              color: isWorker ? Colors.orange : primaryColor,
+              size: 24,
+            )
                 : null,
           ),
           title: Text(
@@ -764,10 +777,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
         children: [
           Icon(Icons.people_outline, size: 60, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text(
-            message,
-            style: TextStyle(color: Colors.grey[500], fontSize: 16),
-          ),
+          Text(message, style: TextStyle(color: Colors.grey[500], fontSize: 16)),
         ],
       ),
     );
