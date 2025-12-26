@@ -446,8 +446,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
   Widget _buildBillStatusPieChart() {
     return Container(
-      height: 200,
-      padding: const EdgeInsets.all(16),
+      height: 160,
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(color: cardColor, borderRadius: kCardRadius, boxShadow: kCardShadow),
       child: StreamBuilder<List<BillModel>>(
         stream: FirestoreService.getAllBillsStream(),
@@ -459,26 +459,35 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           final overdue = bills.where((b) => b.status == 'overdue').length;
           if (bills.isEmpty) return Center(child: Text("No Data", style: TextStyle(color: Colors.grey[400])));
 
-          return Stack(
-            alignment: Alignment.center,
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              PieChart(
-                PieChartData(
-                  sectionsSpace: 3, centerSpaceRadius: 35,
-                  sections: [
-                    _buildPieSection(paid.toDouble(), successColor),
-                    _buildPieSection(unpaid.toDouble(), warningColor),
-                    _buildPieSection(overdue.toDouble(), errorColor),
-                  ],
+              SizedBox(
+                height: 80,
+                child: PieChart(
+                  PieChartData(
+                    sectionsSpace: 3,
+                    centerSpaceRadius: 22,
+                    sections: [
+                      _buildPieSection(paid.toDouble(), successColor),
+                      _buildPieSection(unpaid.toDouble(), warningColor),
+                      _buildPieSection(overdue.toDouble(), errorColor),
+                    ],
+                  ),
                 ),
               ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
+              const SizedBox(height: 4),
+              Text("${bills.length}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  Text("${bills.length}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-                  const Text("Total", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  _buildLegendItem(successColor, Icons.check_circle, 'Paid', paid),
+                  _buildLegendItem(warningColor, Icons.remove_circle_outline, 'Unpaid', unpaid),
+                  _buildLegendItem(errorColor, Icons.error_outline, 'Overdue', overdue),
                 ],
-              )
+              ),
             ],
           );
         },
@@ -492,8 +501,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
   Widget _buildRepairBarChart() {
     return Container(
-      height: 200,
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 10),
+      height: 160,
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 6),
       decoration: BoxDecoration(color: cardColor, borderRadius: kCardRadius, boxShadow: kCardShadow),
       child: StreamBuilder<List<RepairModel>>(
         stream: FirestoreService.getAllRepairsStream(),
@@ -506,32 +515,53 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           double maxY = [pending, progress, completed].reduce((a, b) => a > b ? a : b);
           if (maxY == 0) maxY = 5;
 
-          return BarChart(
-            BarChartData(
-              barGroups: [
-                _makeBarGroup(0, pending, warningColor),
-                _makeBarGroup(1, progress, primaryColor),
-                _makeBarGroup(2, completed, successColor),
-              ],
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) {
-                    const style = TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold);
-                    switch (value.toInt()) {
-                      case 0: return const Padding(padding: EdgeInsets.only(top: 6), child: Text('Wait', style: style));
-                      case 1: return const Padding(padding: EdgeInsets.only(top: 6), child: Text('WIP', style: style));
-                      case 2: return const Padding(padding: EdgeInsets.only(top: 6), child: Text('Done', style: style));
-                      default: return const Text('');
-                    }
-                  }),
-                ),
-              ),
-              borderData: FlBorderData(show: false), gridData: FlGridData(show: false), maxY: maxY * 1.2,
-            ),
-          );
+           // 改善 Repairs 图表的 UI：BarChart 上方为图表，下方为图例（颜色 + 数量）
+           return Column(
+             mainAxisSize: MainAxisSize.min,
+             mainAxisAlignment: MainAxisAlignment.center,
+             children: [
+               SizedBox(
+                 height: 78,
+                 child: BarChart(
+                   BarChartData(
+                     barGroups: [
+                       _makeBarGroup(0, pending, warningColor),
+                       _makeBarGroup(1, progress, primaryColor),
+                       _makeBarGroup(2, completed, successColor),
+                     ],
+                     titlesData: FlTitlesData(
+                       leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                       rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                       topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                       bottomTitles: AxisTitles(
+                         sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) {
+                           const style = TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold);
+                           switch (value.toInt()) {
+                             case 0: return const Padding(padding: EdgeInsets.only(top: 4), child: Text('Wait', style: style));
+                             case 1: return const Padding(padding: EdgeInsets.only(top: 4), child: Text('In Progress', style: style));
+                             case 2: return const Padding(padding: EdgeInsets.only(top: 4), child: Text('Done', style: style));
+                             default: return const Text('');
+                           }
+                         }),
+                       ),
+                     ),
+                     borderData: FlBorderData(show: false),
+                     gridData: FlGridData(show: false),
+                     maxY: maxY * 1.2,
+                   ),
+                 ),
+               ),
+               const SizedBox(height: 4),
+               Row(
+                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                 children: [
+                   _buildLegendItem(warningColor, Icons.access_time, 'Wait', pending.toInt()),
+                   _buildLegendItem(primaryColor, Icons.build_circle, 'In Progress', progress.toInt()),
+                   _buildLegendItem(successColor, Icons.check_circle, 'Done', completed.toInt()),
+                 ],
+               ),
+             ],
+           );
         },
       ),
     );
@@ -545,6 +575,22 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           toY: y, color: color, width: 12, borderRadius: BorderRadius.circular(6),
           backDrawRodData: BackgroundBarChartRodData(show: true, toY: y == 0 ? 5 : y * 1.2, color: const Color(0xFFF3F4F6)),
         ),
+      ],
+    );
+  }
+
+  Widget _buildLegendItem(Color color, IconData icon, String label, int count) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: color, size: 14),
+            const SizedBox(width: 6),
+            Text('$count', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
       ],
     );
   }
