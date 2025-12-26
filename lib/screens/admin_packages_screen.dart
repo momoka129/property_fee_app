@@ -403,7 +403,6 @@ class _AddPackageDialogState extends State<_AddPackageDialog> {
   final _courierController = TextEditingController();
   final _trackingController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _locationController = TextEditingController(text: 'Management Office');
   bool _isLoading = false;
 
   // 样式变量
@@ -477,7 +476,19 @@ class _AddPackageDialogState extends State<_AddPackageDialog> {
                       const SizedBox(height: 12),
                       _buildTextField(_descriptionController, 'Description (e.g. Small Box)', Icons.description_outlined),
                       const SizedBox(height: 12),
-                      _buildTextField(_locationController, 'Location', Icons.place_outlined),
+                      // Location is fixed and not editable by admin
+                      TextFormField(
+                        initialValue: 'Management Office',
+                        decoration: InputDecoration(
+                          labelText: 'Location',
+                          border: outlineBorder,
+                          enabledBorder: outlineBorder,
+                          prefixIcon: Icon(Icons.place_outlined, size: 20, color: Colors.grey[600]),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          labelStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+                        ),
+                        enabled: false,
+                      ),
                     ],
                   ),
                 ),
@@ -540,7 +551,7 @@ class _AddPackageDialogState extends State<_AddPackageDialog> {
           'courier': _courierController.text.trim(),
           'trackingNumber': _trackingController.text.trim(),
           'description': _descriptionController.text.trim(),
-          'location': _locationController.text.trim(),
+          'location': 'Management Office',
           'status': 'ready_for_pickup',
           'arrivedAt': DateTime.now(),
           'image': null,

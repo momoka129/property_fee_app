@@ -22,7 +22,7 @@ class PackageModel {
     this.status = 'ready_for_pickup',
     required this.arrivedAt,
     this.collectedAt,
-    required this.location,
+    this.location = 'Management Office',
     this.image,
     this.notes,
   });
@@ -43,7 +43,7 @@ class PackageModel {
               ? (map['collectedAt'] as Timestamp).toDate()
               : DateTime.parse(map['collectedAt']))
           : null,
-      location: map['location'] ?? '',
+      location: map['location'] ?? 'Management Office',
       image: map['image'],
       notes: map['notes'],
     );

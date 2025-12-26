@@ -277,6 +277,8 @@ class FirestoreService {
       Map<String, dynamic> data) async {
     final docRef = _db.collection('packages').doc(packageId);
     final Map<String, dynamic> payload = Map.from(data);
+    // Force location to be the fixed value
+    payload['location'] = 'Management Office';
 
     // Convert DateTime -> Timestamp
     if (payload['arrivedAt'] is DateTime) {
@@ -671,6 +673,8 @@ class FirestoreService {
     // 2. 准备包裹数据 (Packages)
     final packageRef = _db.collection('packages').doc();
     final Map<String, dynamic> payload = Map.from(data);
+    // Force location to be the fixed value
+    payload['location'] = 'Management Office';
 
     // 确保时间格式正确
     if (payload['arrivedAt'] is DateTime) {
