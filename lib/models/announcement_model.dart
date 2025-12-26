@@ -6,6 +6,7 @@ class AnnouncementModel {
   final String category; // 'event', 'maintenance', 'notice', 'facility', 'emergency'
   final String priority; // 'low', 'medium', 'high'
   final String status;   // 'upcoming', 'ongoing', 'expired'
+  final DateTime? expireAt;
   final String? image;
   final DateTime publishedAt;
   final String author;
@@ -20,6 +21,7 @@ class AnnouncementModel {
     required this.category,
     this.priority = 'medium',
     this.status = 'upcoming', // 默认为 upcoming
+    this.expireAt,
     this.image,
     required this.publishedAt,
     required this.author,
@@ -46,6 +48,25 @@ class AnnouncementModel {
       }
     }
 
+    // parse expireAt similarly to publishedAt (support DateTime, Timestamp, int, String)
+    dynamic rawExpireAt = map['expireAt'];
+    DateTime? parsedExpireAt;
+    if (rawExpireAt == null) {
+      parsedExpireAt = null;
+    } else if (rawExpireAt is DateTime) {
+      parsedExpireAt = rawExpireAt;
+    } else if (rawExpireAt is int) {
+      parsedExpireAt = DateTime.fromMillisecondsSinceEpoch(rawExpireAt);
+    } else if (rawExpireAt is String) {
+      parsedExpireAt = DateTime.tryParse(rawExpireAt);
+    } else {
+      try {
+        parsedExpireAt = (rawExpireAt as dynamic).toDate() as DateTime;
+      } catch (_) {
+        parsedExpireAt = null;
+      }
+    }
+
     return AnnouncementModel(
       id: id,
       title: map['title'] ?? '',
@@ -55,6 +76,7 @@ class AnnouncementModel {
       priority: map['priority'] ?? 'medium',
       status: map['status'] ?? 'upcoming', // 读取 status
       image: map['image'] as String?,
+      expireAt: parsedExpireAt,
       publishedAt: parsedPublishedAt,
       author: map['author'] ?? 'Management',
       isPinned: map['isPinned'] ?? false,
@@ -72,6 +94,7 @@ class AnnouncementModel {
       'status': status,
       'image': image,
       'publishedAt': publishedAt.toIso8601String(),
+      'expireAt': expireAt?.toIso8601String(),
       'author': author,
       'isPinned': isPinned,
       'likeCount': likeCount,

@@ -53,8 +53,41 @@ class _CreateEditAnnouncementScreenState extends State<CreateEditAnnouncementScr
       _category = init['category'] ?? _category;
       _priority = init['priority'] ?? _priority;
       _status = init['status'] ?? _status;
-      _publishedAt = init['publishedAt'] is DateTime ? init['publishedAt'] as DateTime : DateTime.now();
-      _expireAt = init['expireAt'] is DateTime ? init['expireAt'] as DateTime : null;
+      // parse publishedAt supporting DateTime, int (ms), String, or Timestamp
+      final rawPub = init['publishedAt'];
+      if (rawPub == null) {
+        _publishedAt = DateTime.now();
+      } else if (rawPub is DateTime) {
+        _publishedAt = rawPub;
+      } else if (rawPub is int) {
+        _publishedAt = DateTime.fromMillisecondsSinceEpoch(rawPub);
+      } else if (rawPub is String) {
+        _publishedAt = DateTime.tryParse(rawPub) ?? DateTime.now();
+      } else {
+        try {
+          _publishedAt = (rawPub as dynamic).toDate() as DateTime;
+        } catch (_) {
+          _publishedAt = DateTime.now();
+        }
+      }
+
+      // parse expireAt similarly
+      final rawExp = init['expireAt'];
+      if (rawExp == null) {
+        _expireAt = null;
+      } else if (rawExp is DateTime) {
+        _expireAt = rawExp;
+      } else if (rawExp is int) {
+        _expireAt = DateTime.fromMillisecondsSinceEpoch(rawExp);
+      } else if (rawExp is String) {
+        _expireAt = DateTime.tryParse(rawExp);
+      } else {
+        try {
+          _expireAt = (rawExp as dynamic).toDate() as DateTime;
+        } catch (_) {
+          _expireAt = null;
+        }
+      }
       _pinned = init['isPinned'] ?? false;
       // preload existing image if editing
       if (init['image'] != null) {
