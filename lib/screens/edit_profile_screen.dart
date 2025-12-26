@@ -96,7 +96,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       });
 
       // 更新用户头像到Firestore
-      await FirestoreService.updateUserAvatar(user.id, avatarUrl);
+      try {
+        await FirestoreService.updateUserAvatar(user.id, avatarUrl);
+        // 通过Provider更新本地数据，触发UI刷新（确保其他页面也能马上看到变更）
+        if (context.mounted) {
+          context.read<AppProvider>().updateUser(updatedUser);
+        }
+      } catch (e) {
+        debugPrint('Failed to update avatar in Firestore: $e');
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

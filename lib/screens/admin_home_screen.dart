@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../data/mock_data.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/firestore_service.dart';
+import '../services/avatar_service.dart';
 import '../models/bill_model.dart';
 import '../models/repair_model.dart';
 import '../models/package_model.dart';
+import '../models/user_model.dart';
 import '../routes.dart';
 import 'edit_profile_screen.dart';
 import '../widgets/glass_container.dart'; // 引入 GlassContainer
@@ -159,9 +164,44 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   ),
                 ],
               ),
-              child: const CircleAvatar(
-                radius: 22,
-                backgroundImage: AssetImage('assets/images/avatar_default.png'),
+              child: Builder(
+                builder: (context) {
+                  final currentUserId = MockData.currentUser?.id ?? FirebaseAuth.instance.currentUser?.uid;
+                  if (currentUserId == null) {
+                    return const CircleAvatar(
+                      radius: 22,
+                      backgroundImage: AssetImage('assets/images/avatar_default.png'),
+                    );
+                  }
+
+                  return StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance.collection('accounts').doc(currentUserId).snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData || !snapshot.data!.exists) {
+                        return const CircleAvatar(
+                          radius: 22,
+                          backgroundImage: AssetImage('assets/images/avatar_default.png'),
+                        );
+                      }
+
+                      final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+                      final user = UserModel.fromMap(data, snapshot.data!.id);
+                      final avatarUrl = user.avatar;
+
+                      if (AvatarService.isValidAvatarUrl(avatarUrl)) {
+                        return CircleAvatar(
+                          radius: 22,
+                          backgroundImage: CachedNetworkImageProvider(avatarUrl!),
+                        );
+                      }
+
+                      return const CircleAvatar(
+                        radius: 22,
+                        backgroundImage: AssetImage('assets/images/avatar_default.png'),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ),
