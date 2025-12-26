@@ -452,6 +452,23 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                                     }
                                   }
 
+                                  // Check if phone number is already in use by another user (all account types)
+                                  if (phone.isNotEmpty) {
+                                    final phoneExists = await FirestoreService.checkPhoneExists(phone, excludeUserId: user.id);
+                                    if (phoneExists) {
+                                      setStateDialog(() => isLoading = false);
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('This phone number is already in use by another account.'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                      return;
+                                    }
+                                  }
+
                                   try {
                                     final payload = {
                                       'name': name,

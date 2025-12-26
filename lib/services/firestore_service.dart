@@ -494,6 +494,36 @@ class FirestoreService {
     return querySnapshot.docs.isNotEmpty;
   }
 
+  /// Check if a phone number already exists in the accounts or workers collections
+  static Future<bool> checkPhoneExists(String phoneNumber,
+      {String? excludeUserId}) async {
+    if (phoneNumber.trim().isEmpty) return false; // Empty phone numbers are allowed
+
+    // Check in accounts collection (users and admins)
+    Query accountsQuery = _db.collection('accounts').where(
+        'phoneNumber', isEqualTo: phoneNumber);
+
+    // Check in workers collection
+    Query workersQuery = _db.collection('workers').where(
+        'phoneNumber', isEqualTo: phoneNumber);
+
+    final [accountsSnapshot, workersSnapshot] = await Future.wait([
+      accountsQuery.get(),
+      workersQuery.get(),
+    ]);
+
+    // Combine results from both collections
+    final allDocs = [...accountsSnapshot.docs, ...workersSnapshot.docs];
+
+    // If excluding a user ID (for updates), filter out that user
+    if (excludeUserId != null) {
+      final filteredDocs = allDocs.where((doc) => doc.id != excludeUserId);
+      return filteredDocs.isNotEmpty;
+    }
+
+    return allDocs.isNotEmpty;
+  }
+
 
   // 在 FirestoreService 类内部添加以下方法
 // 确保导入了 BillModel

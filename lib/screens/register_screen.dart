@@ -96,6 +96,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
+      // Check if phone number is already in use
+      if (phone.isNotEmpty) {
+        final phoneExists = await FirestoreService.checkPhoneExists(phone);
+        if (phoneExists) {
+          setState(() => _isLoading = false);
+          if (!mounted) return;
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) {
+              return AlertDialog(
+                title: const Text('Phone number already in use'),
+                content: const Text('This phone number is already registered. Please use a different phone number.'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK')),
+                ],
+              );
+            },
+          );
+          return;
+        }
+      }
+
       final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: password);
       final uid = cred.user?.uid;
 
