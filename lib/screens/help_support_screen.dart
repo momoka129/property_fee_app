@@ -1,170 +1,210 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../widgets/glass_container.dart';
 
 class HelpSupportScreen extends StatelessWidget {
   const HelpSupportScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).primaryColor;
+    final bgGradientStart = const Color(0xFFF3F4F6);
+    final bgGradientEnd = const Color(0xFFE5E7EB);
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Help & Support'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // FAQ Section
-          _buildSection(
-            context,
-            'Frequently Asked Questions',
-            Icons.help_outline,
-            [
-              _buildFAQItem(
-                context,
-                'How do I pay my bills?',
-                'Go to the Bills section, select an unpaid bill, and choose your preferred payment method (WeChat Pay, Alipay, or Bank Transfer).',
-              ),
-              _buildFAQItem(
-                context,
-                'How do I submit a repair request?',
-                'Navigate to Repairs section, tap "New Request", fill in the details, upload photos if needed, and submit.',
-              ),
-              _buildFAQItem(
-                context,
-                'How do I book a facility?',
-                'Visit Amenities section, select the facility you want, check availability, and tap "Book Now" to make a reservation.',
-              ),
-              _buildFAQItem(
-                context,
-                'Where can I collect my packages?',
-                'Go to Packages section to see all your packages. The location is shown on each package card. Usually at the Management Office.',
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Contact Section
-          _buildSection(
-            context,
-            'Contact Us',
-            Icons.contact_support,
-            [
-              _buildContactCard(
-                context,
-                'Management Office',
-                'For general inquiries and assistance',
-                '012-345-6789',
-                'management@property.com',
-                Icons.business,
-                Colors.blue,
-              ),
-              const SizedBox(height: 12),
-              _buildContactCard(
-                context,
-                'Emergency Hotline',
-                '24/7 emergency service',
-                '999',
-                'emergency@property.com',
-                Icons.emergency,
-                Colors.red,
-              ),
-              const SizedBox(height: 12),
-              _buildContactCard(
-                context,
-                'Maintenance Team',
-                'For repair and maintenance issues',
-                '012-345-6788',
-                'maintenance@property.com',
-                Icons.build,
-                Colors.orange,
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Quick Links
-          _buildSection(
-            context,
-            'Quick Links',
-            Icons.link,
-            [
-              _buildLinkTile(
-                context,
-                'Community Guidelines',
-                Icons.description,
-                () {
-                  _showGuidelines(context);
-                },
-              ),
-              _buildLinkTile(
-                context,
-                'Terms & Conditions',
-                Icons.gavel,
-                () {
-                  _showTerms(context);
-                },
-              ),
-              _buildLinkTile(
-                context,
-                'Privacy Policy',
-                Icons.privacy_tip,
-                () {
-                  _showPrivacy(context);
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSection(
-    BuildContext context,
-    String title,
-    IconData icon,
-    List<Widget> children,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 24, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-          ],
+        title: const Text(
+          'Help & Support',
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 16),
-        ...children,
-      ],
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black87),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [bgGradientStart, bgGradientEnd],
+          ),
+        ),
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            physics: const BouncingScrollPhysics(),
+            children: [
+              const SizedBox(height: 10),
+              // FAQ Section
+              GlassContainer(
+                opacity: 0.8,
+                borderRadius: BorderRadius.circular(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.help_outline, color: primaryColor),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Frequently Asked Questions',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _buildFAQItem(
+                      context,
+                      'How do I pay my bills?',
+                      'Go to the Bills section, select an unpaid bill, and choose your preferred payment method (WeChat Pay, Alipay, or Bank Transfer).',
+                    ),
+                    _buildDivider(),
+                    _buildFAQItem(
+                      context,
+                      'How do I submit a repair request?',
+                      'Navigate to Repairs section, tap "New Request", fill in the details, upload photos if needed, and submit.',
+                    ),
+                    _buildDivider(),
+                    _buildFAQItem(
+                      context,
+                      'How do I book a facility?',
+                      'Visit Amenities section, select the facility you want, check availability, and tap "Book Now" to make a reservation.',
+                    ),
+                    _buildDivider(),
+                    _buildFAQItem(
+                      context,
+                      'Where can I collect my packages?',
+                      'Go to Packages section to see all your packages. The location is shown on each package card. Usually at the Management Office.',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Contact Section
+              GlassContainer(
+                opacity: 0.8,
+                borderRadius: BorderRadius.circular(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.contact_support, color: primaryColor),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Contact Us',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _buildContactCard(
+                      context,
+                      'Security Guard House',
+                      'For emergencies and security matters',
+                      '03-1234-5678',
+                      Icons.security,
+                      Colors.orange,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Quick Links
+              GlassContainer(
+                opacity: 0.8,
+                borderRadius: BorderRadius.circular(24),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  children: [
+                    _buildLinkTile(
+                      context,
+                      'Resident Handbook',
+                      Icons.description,
+                      () => _showResidentHandbook(context),
+                    ),
+                    _buildDivider(),
+                    _buildLinkTile(
+                      context,
+                      'Terms & Conditions',
+                      Icons.gavel,
+                      () => _showTerms(context),
+                    ),
+                    _buildDivider(),
+                    _buildLinkTile(
+                      context,
+                      'Privacy Policy',
+                      Icons.privacy_tip,
+                      () => _showPrivacy(context),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      ),
     );
   }
+
 
   Widget _buildFAQItem(BuildContext context, String question, String answer) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         title: Text(
           question,
-          style: const TextStyle(fontWeight: FontWeight.w600),
+          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
         ),
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Text(
-              answer,
-              style: TextStyle(color: Colors.grey.shade700),
-            ),
+          Text(
+            answer,
+            style: TextStyle(color: Colors.grey.shade700),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Divider(
+      height: 1,
+      color: Colors.grey.withOpacity(0.2),
+      indent: 56,
+      endIndent: 20,
     );
   }
 
@@ -173,95 +213,75 @@ class HelpSupportScreen extends StatelessWidget {
     String title,
     String description,
     String phone,
-    String email,
     IconData icon,
     Color color,
   ) {
-    return Card(
-      elevation: 0,
-      color: color.withOpacity(0.1),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: color, size: 24),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.black87,
                       ),
-                      Text(
-                        description,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
+                    ),
+                    Text(
+                      description,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(Icons.phone, size: 16, color: Colors.grey.shade600),
+              const SizedBox(width: 8),
+              Text(
+                phone,
+                style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => _makePhoneCall(phone),
+              icon: const Icon(Icons.phone, size: 16),
+              label: const Text('Call'),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.phone, size: 16, color: Colors.grey.shade600),
-                const SizedBox(width: 8),
-                Text(
-                  phone.startsWith('+60') ? phone : '+60 $phone',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(width: 16),
-                Icon(Icons.email, size: 16, color: Colors.grey.shade600),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    email,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _makePhoneCall(phone),
-                    icon: const Icon(Icons.phone, size: 16),
-                    label: const Text('Call'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => _sendEmail(email),
-                    icon: const Icon(Icons.email, size: 16),
-                    label: const Text('Email'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -275,10 +295,12 @@ class HelpSupportScreen extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        trailing: const Icon(Icons.chevron_right),
+        leading: Icon(icon, color: Theme.of(context).primaryColor),
+        title: Text(title, style: const TextStyle(color: Colors.black87)),
+        trailing: const Icon(Icons.chevron_right, color: Colors.black38),
         onTap: onTap,
       ),
     );
@@ -294,28 +316,30 @@ class HelpSupportScreen extends StatelessWidget {
     }
   }
 
-  void _sendEmail(String email) async {
-    final uri = Uri.parse('mailto:$email?subject=Inquiry from Property App');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    }
-  }
 
-  void _showGuidelines(BuildContext context) {
+  void _showResidentHandbook(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Community Guidelines'),
+        title: const Text('Resident Handbook'),
         content: const SingleChildScrollView(
           child: Text(
-            '1. Respect your neighbors and maintain quiet hours (10 PM - 7 AM)\n\n'
-            '2. Keep common areas clean and tidy\n\n'
-            '3. Follow parking regulations and park only in assigned spaces\n\n'
-            '4. Dispose of waste properly in designated areas\n\n'
-            '5. Report any maintenance issues promptly\n\n'
-            '6. Follow facility booking rules and cancel if unable to attend\n\n'
-            '7. Keep pets on leash in common areas\n\n'
-            '8. No smoking in common areas',
+            'Welcome to our community! This handbook contains important information for all residents:\n\n'
+            'HOUSING REGULATIONS:\n'
+            '• Maintenance fees are due on the 1st of each month\n'
+            '• Late payment fees: RM 50 after due date\n'
+            '• Visitors must register at security desk\n'
+            '• Parking permits required for all vehicles\n\n'
+            'COMMUNITY RULES:\n'
+            '• Quiet hours: 10:00 PM - 7:00 AM\n'
+            '• Common areas must be kept clean\n'
+            '• Report maintenance issues within 24 hours\n'
+            '• Pets must be on leash in common areas\n\n'
+            'EMERGENCY CONTACTS:\n'
+            '• Security Guard House: 03-1234-5678\n'
+            '• Fire Department: 994\n'
+            '• Police: 999\n'
+            '• Hospital: 03-1234-5679',
           ),
         ),
         actions: [
@@ -338,11 +362,13 @@ class HelpSupportScreen extends StatelessWidget {
             'By using this Property Management App, you agree to:\n\n'
             '• Use the app only for legitimate property management purposes\n'
             '• Provide accurate information when submitting requests\n'
-            '• Pay all fees and charges on time\n'
+            '• Pay all maintenance fees and charges on time\n'
             '• Follow all community rules and regulations\n'
             '• Respect the privacy of other residents\n'
-            '• Report any security concerns immediately\n\n'
-            'The management reserves the right to suspend or terminate access for violations.',
+            '• Report any security concerns immediately\n'
+            '• Keep your account information secure\n\n'
+            'The management reserves the right to suspend or terminate access for violations.\n\n'
+            'All maintenance fees are non-refundable once paid.',
           ),
         ),
         actions: [
@@ -365,11 +391,12 @@ class HelpSupportScreen extends StatelessWidget {
             'We are committed to protecting your privacy:\n\n'
             '• Your personal information is used only for property management purposes\n'
             '• We do not share your data with third parties without consent\n'
-            '• Payment information is processed securely\n'
-            '• You can access and update your information anytime\n'
+            '• Payment information is processed securely through licensed payment providers\n'
+            '• You can access and update your information anytime through the app\n'
             '• We use encryption to protect sensitive data\n'
-            '• Activity logs are kept for security purposes only\n\n'
-            'For questions about your privacy, contact the management office.',
+            '• Activity logs are kept for security and maintenance purposes only\n'
+            '• Visitor pass applications are stored securely for security records\n\n'
+            'For questions about your privacy, contact the Security Guard House.',
           ),
         ),
         actions: [
