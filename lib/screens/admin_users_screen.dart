@@ -248,6 +248,35 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       onPressed: () async {
+                        // 在执行删除前先检查工人是否有未完成的维修任务
+                        if (isWorker) {
+                          try {
+                            final hasActive = await FirestoreService.hasActiveRepairs(id);
+                            if (hasActive) {
+                              // 关闭确认弹窗并提示无法删除
+                              Navigator.pop(context);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('This worker has unfinished repair tasks and cannot be deleted'),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+                          } catch (e) {
+                            // 检查失败时，继续尝试删除或提示错误
+                            Navigator.pop(context);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Check failed: $e')),
+                              );
+                            }
+                            return;
+                          }
+                        }
+
                         Navigator.pop(context); // 先关闭弹窗
                         try {
                           if (isWorker) {
@@ -262,6 +291,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                           }
                         } catch (e) {
                           // handle error
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Delete failed: $e')),
+                            );
+                          }
                         }
                       },
                       child: const Text('Delete'),

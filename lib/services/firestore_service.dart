@@ -861,9 +861,29 @@ class FirestoreService {
     }
   }
 
+  // 检查工人是否有未完成的维修任务
+  static Future<bool> hasActiveRepairs(String workerId) async {
+    try {
+      final query = await _db.collection('repairs')
+          .where('workerId', isEqualTo: workerId)
+          .where('status', whereIn: ['pending', 'in_progress'])
+          .get();
+      return query.docs.isNotEmpty;
+    } catch (e) {
+      print("Error checking active repairs for worker: $e");
+      rethrow;
+    }
+  }
+
   // 3. 删除工人
   static Future<void> deleteWorker(String workerId) async {
     try {
+      // 检查是否有未完成的维修任务
+      final workerHasActiveRepairs = await hasActiveRepairs(workerId);
+      if (workerHasActiveRepairs) {
+        throw Exception('Cannot delete worker with active repair assignments');
+      }
+
       await _db.collection('workers').doc(workerId).delete();
     } catch (e) {
       print("Error deleting worker: $e");
