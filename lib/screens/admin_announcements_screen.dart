@@ -177,7 +177,7 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
   }
 
   void _navigateToEdit(AnnouncementModel ann) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => CreateEditAnnouncementScreen(isEdit: true, announcementId: ann.id, initialData: { 'title': ann.title, 'summary': '', 'content': ann.content, 'category': ann.category, 'priority': ann.priority, 'status': 'ongoing', 'publishedAt': ann.publishedAt, 'expireAt': null, 'isPinned': ann.isPinned, 'author': ann.author, 'image': ann.image })));
+    Navigator.push(context, MaterialPageRoute(builder: (_) => CreateEditAnnouncementScreen(isEdit: true, announcementId: ann.id, initialData: { 'title': ann.title, 'summary': ann.summary, 'content': ann.content, 'category': ann.category, 'priority': ann.priority, 'status': 'ongoing', 'publishedAt': ann.publishedAt, 'expireAt': null, 'isPinned': ann.isPinned, 'author': ann.author, 'image': ann.image })));
   }
 
   Future<void> _confirmDelete(AnnouncementModel ann) async {

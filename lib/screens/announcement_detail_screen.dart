@@ -101,6 +101,26 @@ class AnnouncementDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
 
+                      // 摘要（如果有内容）
+                      if (currentData.summary.isNotEmpty) ...[
+                        Text(
+                          'Summary',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          currentData.summary,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontStyle: FontStyle.italic,
+                            color: Colors.grey.shade700,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+
                       // 日期（移除了 Author）
                       Row(
                         children: [

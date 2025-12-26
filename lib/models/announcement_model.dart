@@ -1,6 +1,7 @@
 class AnnouncementModel {
   final String id;
   final String title;
+  final String summary; // 公告摘要
   final String content;
   final String category; // 'event', 'maintenance', 'notice', 'facility', 'emergency'
   final String priority; // 'low', 'medium', 'high'
@@ -14,6 +15,7 @@ class AnnouncementModel {
   AnnouncementModel({
     required this.id,
     required this.title,
+    required this.summary, // 必需的摘要字段
     required this.content,
     required this.category,
     this.priority = 'medium',
@@ -47,6 +49,7 @@ class AnnouncementModel {
     return AnnouncementModel(
       id: id,
       title: map['title'] ?? '',
+      summary: map['summary'] ?? '', // 读取摘要字段
       content: map['content'] ?? '',
       category: map['category'] ?? 'notice',
       priority: map['priority'] ?? 'medium',
@@ -62,6 +65,7 @@ class AnnouncementModel {
   Map<String, dynamic> toMap() {
     return {
       'title': title,
+      'summary': summary, // 包含摘要字段
       'content': content,
       'category': category,
       'priority': priority,
