@@ -78,7 +78,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (_formKey.currentState!.validate()) {
       try {
         if (MockData.currentUser != null) {
-          final updatedUser = MockData.currentUser!.copyWith(
+          final currentUser = MockData.currentUser!;
+          final newAddress = _propertyAddressController.text.trim();
+
+          // Check if the new address is already in use by another user
+          if (newAddress != currentUser.propertySimpleAddress) {
+            final addressExists = await FirestoreService.checkAddressExists(newAddress, excludeUserId: currentUser.id);
+            if (addressExists) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('This property address is already in use by another resident.'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+          }
+
+          final updatedUser = currentUser.copyWith(
             name: _nameController.text.trim(),
             phoneNumber: _phoneController.text.trim().isEmpty
                 ? null

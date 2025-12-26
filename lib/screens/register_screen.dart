@@ -28,9 +28,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
 
   String? _errorMessage;
-  // Temporary toggle to disable address existence check while debugging registration.
-  // Set to true to re-enable address validation.
-  bool _enableAddressValidation = false;
+  // Address validation is now enabled to ensure property address uniqueness
+  bool _enableAddressValidation = true;
 
   @override
   void initState() {

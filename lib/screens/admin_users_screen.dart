@@ -417,6 +417,24 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
 
                                   setStateDialog(() => isLoading = true);
 
+                                  // Check if address is already in use by another user (only for residents, not workers)
+                                  if (!isWorker) {
+                                    final composedAddress = '$selectedBuilding ${selectedFloor}${selectedUnit}';
+                                    final addressExists = await FirestoreService.checkAddressExists(composedAddress, excludeUserId: user.id);
+                                    if (addressExists) {
+                                      setStateDialog(() => isLoading = false);
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('This property address is already in use by another resident.'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                      return;
+                                    }
+                                  }
+
                                   // Check if email is already in use by another user (only for residents, not workers)
                                   if (!isWorker) {
                                     final emailExists = await FirestoreService.checkEmailExists(email, excludeUserId: user.id);
