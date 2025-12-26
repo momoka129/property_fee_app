@@ -8,6 +8,7 @@ import '../../services/firestore_service.dart';
 import '../../routes.dart';
 import '../../providers/app_provider.dart';
 import '../../utils/url_utils.dart';
+import '../../utils/bill_message.dart';
 import '../../widgets/glass_container.dart'; // 确保引入 GlassContainer
 
 class DashboardTab extends StatefulWidget {
@@ -325,10 +326,21 @@ class _DashboardTabState extends State<DashboardTab> {
       builder: (context, billsSnapshot) {
         final bills = billsSnapshot.data ?? [];
         final unpaidBills = bills.where((b) => b.status == 'unpaid').toList();
-        // Expected bills are considered those with a billingDate in the future
-        final expectedBills = bills.where((b) => b.billingDate.isAfter(DateTime.now())).toList();
+        // Overdue 判断：显式标记为 'overdue' 的，或者仍为 'unpaid' 且 dueDate 在今天之前的
+        final overdueBills = bills.where((b) =>
+            b.status == 'overdue' ||
+            (b.status == 'unpaid' && b.dueDate.isBefore(DateTime.now()))
+        ).toList();
 
-        // Always show the bulletin (non-clickable). Display counts and an English message.
+        // Compose concise Chinese message using utility
+        final int totalToPayCount = unpaidBills.length + overdueBills.length;
+        final String billsMessage = formatConciseBillsMessage(
+          unpaid: unpaidBills.length,
+          overdue: overdueBills.length,
+          totalToPay: totalToPayCount,
+        );
+
+        // Always show the bulletin (non-clickable). Display counts and a message.
         return Padding(
           padding: const EdgeInsets.only(bottom: 24),
           child: Column(
@@ -356,19 +368,19 @@ class _DashboardTabState extends State<DashboardTab> {
                     children: [
                       const SizedBox(height: 2),
                       Text(
-                        'You have ${unpaidBills.length} unpaid bill(s) and ${expectedBills.length} expected bill(s)',
+                        billsMessage,
                         style: const TextStyle(color: Colors.black54),
                       ),
                       const SizedBox(height: 6),
                       // Message priority: if no bills at all -> positive message,
-                      // else if there are expected bills -> warning message,
+                      // else if there are overdue bills -> warning message,
                       // otherwise show a neutral reminder about unpaid bills.
-                      if (unpaidBills.isEmpty && expectedBills.isEmpty)
+                      if (unpaidBills.isEmpty && overdueBills.isEmpty)
                         const Text(
                           'Very good, you have no bills to pay.',
                           style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600),
                         )
-                      else if (expectedBills.isNotEmpty)
+                      else if (overdueBills.isNotEmpty)
                         const Text(
                           'Not great, please pay as soon as possible.',
                           style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w600),
