@@ -353,9 +353,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                     // Name
                     _buildGlassTextField(controller: nameController, label: 'Name', icon: Icons.badge_outlined),
                     const SizedBox(height: 16),
-                    // Email
-                    _buildGlassTextField(controller: emailController, label: 'Email', icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
-                    const SizedBox(height: 16),
+                    // Email (only for residents; hide for workers)
+                    if (!isWorker) ...[
+                      _buildGlassTextField(controller: emailController, label: 'Email', icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+                      const SizedBox(height: 16),
+                    ],
                     // Phone
                     if (isWorker) ...[
                       mp.MalaysiaPhoneInput(controller: phoneController, label: 'Phone Number', required: true),
@@ -470,10 +472,12 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                             }
 
                             try {
-                              final payload = {'name': name, 'email': email, 'phoneNumber': phone};
-                              if (!isWorker) {
-                                payload['propertySimpleAddress'] = '$selectedBuilding ${selectedFloor}${selectedUnit}';
-                              }
+                            // For workers we do not include email in the payload (remove email field for workers)
+                            final payload = {'name': name, 'phoneNumber': phone};
+                            if (!isWorker) {
+                              payload['email'] = email;
+                              payload['propertySimpleAddress'] = '$selectedBuilding ${selectedFloor}${selectedUnit}';
+                            }
 
                               if (isWorker) {
                                 await FirestoreService.updateWorker(user.id, payload);
