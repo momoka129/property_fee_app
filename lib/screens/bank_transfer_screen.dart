@@ -492,13 +492,10 @@ class _BankTransferScreenState extends State<BankTransferScreen> {
             width: double.infinity,
             child: FilledButton(
               onPressed: () {
-                Navigator.pop(context); // 关闭对话框
-                Navigator.pop(context); // 返回支付页面
-                Navigator.pop(context); // 返回账单详情页面
-                // 刷新页面
-                if (Navigator.canPop(context)) {
-                  Navigator.pop(context);
-                }
+                // 使用根导航器关闭对话框并清空栈跳转回首页，避免局部 Navigator 导致的返回到账单详情问题
+                Navigator.of(context, rootNavigator: true).pop();
+                Navigator.of(context, rootNavigator: true)
+                    .pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
               },
               child: const Text('Done'),
             ),

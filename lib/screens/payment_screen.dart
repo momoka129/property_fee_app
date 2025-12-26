@@ -92,8 +92,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
           'Paid RM ${_totalAmountToPay.toStringAsFixed(2)} using $_selectedName.\nThank you!',
           confirmText: 'Done',
           onConfirm: () {
-            Navigator.of(context).pop(); // 关弹窗
-            Navigator.of(context).pop(); // 退出支付页面
+            // 先关闭对话框（使用 rootNavigator 确保关闭的是顶层对话框），
+            // 然后使用 rootNavigator 在根导航器上清空栈并跳转到首页。
+            Navigator.of(context, rootNavigator: true).pop();
+            Navigator.of(context, rootNavigator: true)
+                .pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
           },
         ),
       );
