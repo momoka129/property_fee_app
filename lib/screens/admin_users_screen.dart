@@ -313,7 +313,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                     // Email
                     _buildGlassTextField(controller: emailController, label: 'Email', icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
                     const SizedBox(height: 12),
-                    // Phone (工人使用 MalaysiaPhoneInput，其他使用普通输入)
+                    // Phone (使用 MalaysiaPhoneInput 确保9位数格式)
                     if (isWorker) ...[
                       mp.MalaysiaPhoneInput(
                         controller: phoneController,
@@ -321,11 +321,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                         required: true, // 工人电话必填
                       ),
                     ] else ...[
-                      _buildGlassTextField(
+                      mp.MalaysiaPhoneInput(
                         controller: phoneController,
                         label: 'Phone Number',
-                        icon: Icons.phone_android_outlined,
-                        keyboardType: TextInputType.phone,
+                        required: false, // 住户电话为可选
                       ),
                     ],
                     const SizedBox(height: 12),
