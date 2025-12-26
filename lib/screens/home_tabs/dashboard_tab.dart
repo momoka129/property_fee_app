@@ -411,7 +411,7 @@ class _DashboardTabState extends State<DashboardTab> {
         ),
 
         StreamBuilder<List<AnnouncementModel>>(
-          stream: FirestoreService.announcementsStream(limit: 3),
+          stream: FirestoreService.announcementsStream(limit: 10), // 获取更多公告以便筛选置顶的
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -424,9 +424,21 @@ class _DashboardTabState extends State<DashboardTab> {
               );
             }
 
-            final announcements = snapshot.data!;
+            // 排序：置顶的公告排在前面，按发布时间倒序
+            final announcements = snapshot.data!
+              ..sort((a, b) {
+                // 置顶的优先级最高
+                if (a.isPinned && !b.isPinned) return -1;
+                if (!a.isPinned && b.isPinned) return 1;
+                // 同等置顶状态下，按发布时间倒序
+                return b.publishedAt.compareTo(a.publishedAt);
+              });
+
+            // 只显示前3个（优先显示置顶的）
+            final displayAnnouncements = announcements.take(3).toList();
+
             return Column(
-              children: announcements.map((announcement) {
+              children: displayAnnouncements.map((announcement) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: GestureDetector(
@@ -500,6 +512,21 @@ class _DashboardTabState extends State<DashboardTab> {
                                         ),
                                       ),
                                     ),
+                                    if (announcement.isPinned) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.withOpacity(0.1),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.push_pin,
+                                          size: 12,
+                                          color: Colors.orange,
+                                        ),
+                                      ),
+                                    ],
                                     const Spacer(),
                                     Text(
                                       // 假设 AnnouncementModel 有 date 字段，这里简化显示

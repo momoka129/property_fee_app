@@ -86,6 +86,15 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                       .toList();
                 }
 
+                // 排序：置顶的公告排在前面，按发布时间倒序
+                announcements.sort((a, b) {
+                  // 置顶的优先级最高
+                  if (a.isPinned && !b.isPinned) return -1;
+                  if (!a.isPinned && b.isPinned) return 1;
+                  // 同等置顶状态下，按发布时间倒序
+                  return b.publishedAt.compareTo(a.publishedAt);
+                });
+
                 if (announcements.isEmpty) {
                   return const Center(child: Text('No announcements match filter.'));
                 }
@@ -153,6 +162,21 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                                           ),
                                         ),
                                       ),
+                                      if (announcement.isPinned) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange.withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.push_pin,
+                                            size: 12,
+                                            color: Colors.orange,
+                                          ),
+                                        ),
+                                      ],
                                       const Spacer(),
                                       // 显示点赞数小图标（可选，既然要移除作者，这里放点赞挺好）
                                       Icon(Icons.thumb_up_alt_outlined, size: 14, color: Colors.grey.shade500),

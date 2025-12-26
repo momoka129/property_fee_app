@@ -74,21 +74,40 @@ class AnnouncementDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 分类标签
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _getCategoryColor(currentData.category).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          currentData.categoryDisplay,
-                          style: TextStyle(
-                            color: _getCategoryColor(currentData.category),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                      // 分类标签和置顶图标
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _getCategoryColor(currentData.category).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              currentData.categoryDisplay,
+                              style: TextStyle(
+                                color: _getCategoryColor(currentData.category),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                        ),
+                          if (currentData.isPinned) ...[
+                            const SizedBox(width: 12),
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.push_pin,
+                                size: 16,
+                                color: Colors.orange,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 16),
 
