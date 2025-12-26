@@ -8,16 +8,20 @@ class RepairModel {
   final String location;
   final String priority;
 
-  // 状态增加: 'canceled', 'rejected'
-  final String status; // 'pending', 'in_progress', 'completed', 'canceled', 'rejected'
+  // 状态: 'pending', 'in_progress', 'completed', 'canceled', 'rejected'
+  final String status;
 
   final DateTime createdAt;
   final DateTime? completedAt;
 
-  // 新增字段
+  // --- 1. 列表页需要的图片字段 ---
+  final List<String> images;
+
+  // --- 2. 新增字段 (注意：时间字段统一定义为 repairDate) ---
   final String? rejectionReason; // 拒绝理由
   final String? workerName;      // 分配的工人名字
-  final DateTime? scheduledDate; // 预约维修时间
+  final String? workerId;        // 工人ID (用于关联)
+  final DateTime? repairDate;    // 维修/预约时间 (统一字段名)
 
   RepairModel({
     required this.id,
@@ -29,9 +33,11 @@ class RepairModel {
     this.status = 'pending',
     required this.createdAt,
     this.completedAt,
+    this.images = const [], // 默认为空列表
     this.rejectionReason,
     this.workerName,
-    this.scheduledDate,
+    this.workerId,
+    this.repairDate,
   });
 
   factory RepairModel.fromMap(Map<String, dynamic> map, String documentId) {
@@ -43,17 +49,24 @@ class RepairModel {
       location: map['location'] ?? '',
       priority: map['priority'] ?? 'medium',
       status: map['status'] ?? 'pending',
-      createdAt: map['createdAt'] is DateTime
-          ? map['createdAt']
-          : (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      completedAt: map['completedAt'] is DateTime
-          ? map['completedAt']
-          : (map['completedAt'] as Timestamp?)?.toDate(),
+      createdAt: map['createdAt'] is Timestamp
+          ? (map['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
+      completedAt: map['completedAt'] is Timestamp
+          ? (map['completedAt'] as Timestamp).toDate()
+          : null,
+
+      // 安全转换图片
+      images: List<String>.from(map['images'] ?? []),
+
       rejectionReason: map['rejectionReason'],
       workerName: map['workerName'],
-      scheduledDate: map['scheduledDate'] is DateTime
-          ? map['scheduledDate']
-          : (map['scheduledDate'] as Timestamp?)?.toDate(),
+      workerId: map['workerId'],
+
+      // 统一读取 repairDate
+      repairDate: map['repairDate'] is Timestamp
+          ? (map['repairDate'] as Timestamp).toDate()
+          : null,
     );
   }
 
@@ -67,9 +80,12 @@ class RepairModel {
       'status': status,
       'createdAt': Timestamp.fromDate(createdAt),
       'completedAt': completedAt != null ? Timestamp.fromDate(completedAt!) : null,
+      'images': images,
       'rejectionReason': rejectionReason,
       'workerName': workerName,
-      'scheduledDate': scheduledDate != null ? Timestamp.fromDate(scheduledDate!) : null,
+      'workerId': workerId,
+      // 统一写入 repairDate
+      'repairDate': repairDate != null ? Timestamp.fromDate(repairDate!) : null,
     };
   }
 
@@ -84,8 +100,8 @@ class RepairModel {
     }
   }
 
-  // 省略 locationDisplay 和 priorityDisplay，保持原样即可
   String get locationDisplay => location;
+
   String get priorityDisplay {
     switch (priority) {
       case 'low': return 'Low';
