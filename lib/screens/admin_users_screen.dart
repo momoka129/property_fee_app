@@ -248,6 +248,218 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
     );
   }
 
+  // ==================== 2.5 编辑用户弹窗 ====================
+  void _showEditUserDialog(UserModel user, bool isWorker) {
+    final nameController = TextEditingController(text: user.name);
+    final emailController = TextEditingController(text: user.email);
+    final phoneController = TextEditingController(text: user.phoneNumber ?? '');
+    // Address selection state (use same options as RegisterScreen)
+    String selectedBuilding = 'Alpha Building';
+    String selectedFloor = 'G';
+    String selectedUnit = '01';
+
+    // Try parse existing propertySimpleAddress like "Alpha Building G01"
+    try {
+      final addr = user.propertySimpleAddress;
+      if (addr.isNotEmpty) {
+        // split by space: ["Alpha", "Building", "G01"] or "Alpha Building G01"
+        final parts = addr.split(' ');
+        if (parts.length >= 3) {
+          selectedBuilding = '${parts[0]} ${parts[1]}';
+          final last = parts.sublist(2).join(' ');
+          // last expected like G01
+          if (last.isNotEmpty) {
+            selectedFloor = last[0];
+            selectedUnit = last.substring(1);
+          }
+        } else {
+          // fallback: attempt to extract floor+unit at end
+          final match = RegExp(r'([A-Za-z ]+)\s+([G|0-9][0-9])\$').firstMatch(addr);
+          if (match != null) {
+            selectedBuilding = match.group(1)!.trim();
+            final fu = match.group(2)!;
+            selectedFloor = fu[0];
+            selectedUnit = fu.substring(1);
+          }
+        }
+      }
+    } catch (_) {}
+
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.3),
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setStateDialog) {
+          return Dialog(
+            insetPadding: const EdgeInsets.all(20),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isWorker ? 'Edit Worker' : 'Edit Resident',
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    // Name
+                    _buildGlassTextField(controller: nameController, label: 'Name', icon: Icons.badge_outlined),
+                    const SizedBox(height: 12),
+                    // Email
+                    _buildGlassTextField(controller: emailController, label: 'Email', icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+                    const SizedBox(height: 12),
+                    // Phone
+                    _buildGlassTextField(controller: phoneController, label: 'Phone Number', icon: Icons.phone_android_outlined, keyboardType: TextInputType.phone),
+                    const SizedBox(height: 12),
+
+                    // Address selection (only for residents). For workers, keep as static text.
+                    if (!isWorker) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text('Building', style: Theme.of(context).textTheme.bodySmall),
+                      ),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Alpha Building'),
+                            selected: selectedBuilding == 'Alpha Building',
+                            onSelected: (_) => setStateDialog(() => selectedBuilding = 'Alpha Building'),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Beta Building'),
+                            selected: selectedBuilding == 'Beta Building',
+                            onSelected: (_) => setStateDialog(() => selectedBuilding = 'Beta Building'),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Central Building'),
+                            selected: selectedBuilding == 'Central Building',
+                            onSelected: (_) => setStateDialog(() => selectedBuilding = 'Central Building'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Floor + Unit selection
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InputDecorator(
+                              decoration: const InputDecoration(labelText: 'Floor', border: OutlineInputBorder()),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: selectedFloor,
+                                  items: const [
+                                    DropdownMenuItem(value: 'G', child: Text('G')),
+                                    DropdownMenuItem(value: '1', child: Text('1')),
+                                    DropdownMenuItem(value: '2', child: Text('2')),
+                                    DropdownMenuItem(value: '3', child: Text('3')),
+                                    DropdownMenuItem(value: '4', child: Text('4')),
+                                    DropdownMenuItem(value: '5', child: Text('5')),
+                                  ],
+                                  onChanged: (v) {
+                                    if (v == null) return;
+                                    setStateDialog(() => selectedFloor = v);
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: InputDecorator(
+                              decoration: const InputDecoration(labelText: 'Unit', border: OutlineInputBorder()),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: selectedUnit,
+                                  items: const [
+                                    DropdownMenuItem(value: '01', child: Text('01')),
+                                    DropdownMenuItem(value: '02', child: Text('02')),
+                                  ],
+                                  onChanged: (v) {
+                                    if (v == null) return;
+                                    setStateDialog(() => selectedUnit = v);
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ] else ...[
+                      // For workers show current address (read-only)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 12),
+                        child: Text('Address: ${user.propertySimpleAddress}', style: TextStyle(color: Colors.grey[700])),
+                      ),
+                    ],
+
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: TextStyle(color: Colors.grey[600]))),
+                        const SizedBox(width: 12),
+                        isLoading
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                            : FilledButton(
+                                onPressed: () async {
+                                  final name = nameController.text.trim();
+                                  final email = emailController.text.trim();
+                                  final phone = phoneController.text.trim();
+                                  if (name.isEmpty || email.isEmpty) return;
+
+                                  setStateDialog(() => isLoading = true);
+                                  try {
+                                    final payload = {
+                                      'name': name,
+                                      'email': email,
+                                      'phoneNumber': phone,
+                                      // DO NOT include 'role' or 'avatar' here
+                                    };
+
+                                    if (!isWorker) {
+                                      final composedAddress = '$selectedBuilding ${selectedFloor}${selectedUnit}';
+                                      payload['propertySimpleAddress'] = composedAddress;
+                                    }
+
+                                    if (isWorker) {
+                                      await FirestoreService.updateWorker(user.id, payload);
+                                    } else {
+                                      await FirestoreService.updateUser(user.id, payload);
+                                    }
+
+                                    if (mounted) {
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved successfully'), backgroundColor: Colors.green));
+                                      setState(() {}); // refresh lists
+                                    }
+                                  } catch (e) {
+                                    setStateDialog(() => isLoading = false);
+                                    // optionally show error
+                                  }
+                                },
+                                child: const Text('Save'),
+                                style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
+                              ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
   // ==================== 3. 主页面构建 ====================
   @override
   Widget build(BuildContext context) {
@@ -425,6 +637,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
         color: Colors.transparent,
         child: ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          onTap: () => _showEditUserDialog(user, isWorker),
           leading: Container(
             width: 48,
             height: 48,

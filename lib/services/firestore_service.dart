@@ -823,6 +823,11 @@ class FirestoreService {
     }
   }
 
+  /// Update worker document in 'workers' collection
+  static Future<void> updateWorker(String workerId, Map<String, dynamic> data) async {
+    await _db.collection('workers').doc(workerId).update(data);
+  }
+
   // 在 FirestoreService 类中添加/更新这两个方法
 
   // 1. 分配维修人员 (确保 status 变更为 in_progress)

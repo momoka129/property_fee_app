@@ -534,6 +534,8 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
       );
       return;
     }
+
+    final formKey = GlobalKey<FormState>();
     final titleCtrl = TextEditingController(text: bill?.title ?? '');
     final amountCtrl = TextEditingController(text: bill != null ? bill.amount.toString() : '');
     String selectedCategory = bill?.category ?? 'maintenance';
@@ -568,9 +570,11 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
                 Text(bill == null ? 'New Bill' : 'Edit Bill', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
                 const SizedBox(height: 20),
                 Flexible(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
+                  child: Form(
+                    key: formKey,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
                         _buildDialogTextField(titleCtrl, 'Title'),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<UserModel>(
@@ -582,7 +586,28 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
                         const SizedBox(height: 12),
                         _buildDialogTextField(addressCtrl, 'Address'),
                         const SizedBox(height: 12),
-                        _buildDialogTextField(amountCtrl, 'Amount (RM)', isNumber: true),
+                        TextFormField(
+                          controller: amountCtrl,
+                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                          decoration: InputDecoration(
+                            labelText: 'Amount (RM)',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Amount is required';
+                            }
+                            final amount = double.tryParse(value);
+                            if (amount == null) {
+                              return 'Please enter a valid number';
+                            }
+                            if (amount <= 0) {
+                              return 'Amount must be greater than 0';
+                            }
+                            return null;
+                          },
+                        ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
                           value: selectedCategory,
@@ -597,11 +622,15 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
                     ),
                   ),
                 ),
+              ),
                 const SizedBox(height: 24),
                 Row(children: [
                   Expanded(child: TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel'))),
                   const SizedBox(width: 12),
                   Expanded(child: FilledButton(style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), backgroundColor: primaryColor), onPressed: () async {
+                    if (!formKey.currentState!.validate()) {
+                      return;
+                    }
                     final payload = {
                       'userId': selectedUser?.id ?? bill?.userId ?? '',
                       'payerName': selectedUser?.name ?? '',
