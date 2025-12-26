@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:provider/provider.dart';
 import '../../models/user_model.dart';
 import '../../models/announcement_model.dart';
 import '../../models/package_model.dart';
@@ -42,7 +41,7 @@ class _DashboardTabState extends State<DashboardTab> {
     // 定义背景渐变 (与 ProfileTab 保持一致)
     final Color bgGradientStart = const Color(0xFFF3F4F6);
     final Color bgGradientEnd = const Color(0xFFE5E7EB);
-    final primaryColor = Theme.of(context).primaryColor;
+    // primaryColor removed (unused)
 
     return Container(
       decoration: BoxDecoration(
@@ -102,7 +101,6 @@ class _DashboardTabState extends State<DashboardTab> {
               StreamBuilder<int>(
                 stream: FirestoreService.getUnreadNotificationCountStream(user.id),
                 builder: (context, snapshot) {
-                  final count = snapshot.data ?? 0;
                   return Stack(
                     alignment: Alignment.center,
                     children: [
@@ -119,34 +117,7 @@ class _DashboardTabState extends State<DashboardTab> {
                           },
                         ),
                       ),
-                      if (count > 0)
-                        Positioned(
-                          right: 16 + 8,
-                          top: 8,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
-                                ]
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 16,
-                              minHeight: 16,
-                            ),
-                            child: Text(
-                              '$count',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
+                      // notification badge removed (no visual red dot)
                     ],
                   );
                 },
@@ -319,15 +290,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   ),
                   child: Icon(icon, color: accentColor, size: 20),
                 ),
-                if (hasNotification)
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
+                // stat card notification dot removed
               ],
             ),
             const SizedBox(height: 16),
