@@ -616,8 +616,14 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
                           onChanged: (val) => setState(() => selectedCategory = val!),
                         ),
                         const SizedBox(height: 16),
-                        _buildDatePickerRow('Due Date', dueDate, (d) => setState(() => dueDate = d)),
-                        _buildDatePickerRow('Billing Date', billingDate, (d) => setState(() => billingDate = d)),
+                        _buildDatePickerRow('Billing Date', billingDate, (d) => setState(() {
+                          billingDate = d;
+                          // 如果生成日期晚于到期日期，自动调整到期日期
+                          if (dueDate.isBefore(billingDate)) {
+                            dueDate = billingDate.add(const Duration(days: 1));
+                          }
+                        })),
+                        _buildDatePickerRow('Due Date', dueDate, (d) => setState(() => dueDate = d), minDate: billingDate),
                       ],
                     ),
                   ),
@@ -629,6 +635,17 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
                   const SizedBox(width: 12),
                   Expanded(child: FilledButton(style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), backgroundColor: primaryColor), onPressed: () async {
                     if (!formKey.currentState!.validate()) {
+                      return;
+                    }
+
+                    // 验证到期日期不能早于生成日期
+                    if (dueDate.isBefore(billingDate)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Due date cannot be earlier than billing date'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
                       return;
                     }
                     final payload = {
@@ -666,12 +683,20 @@ class _AdminBillsScreenState extends State<AdminBillsScreen> {
     );
   }
 
-  Widget _buildDatePickerRow(String label, DateTime date, Function(DateTime) onSelect) {
+  Widget _buildDatePickerRow(String label, DateTime date, Function(DateTime) onSelect, {DateTime? minDate}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Text(label, style: TextStyle(color: Colors.grey[600])),
-        TextButton.icon(icon: const Icon(Icons.calendar_today, size: 16), label: Text(DateFormat('yyyy-MM-dd').format(date)), onPressed: () async { final picked = await showDatePicker(context: context, initialDate: date, firstDate: DateTime(2000), lastDate: DateTime(2100)); if (picked != null) onSelect(picked); }),
+        TextButton.icon(icon: const Icon(Icons.calendar_today, size: 16), label: Text(DateFormat('yyyy-MM-dd').format(date)), onPressed: () async {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: date,
+            firstDate: minDate ?? DateTime(2000),
+            lastDate: DateTime(2100)
+          );
+          if (picked != null) onSelect(picked);
+        }),
       ]),
     );
   }
