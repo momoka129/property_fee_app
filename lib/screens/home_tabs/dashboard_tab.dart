@@ -491,11 +491,6 @@ class _DashboardTabState extends State<DashboardTab> {
                                       ),
                                     ],
                                     const Spacer(),
-                                    Text(
-                                      // 假设 AnnouncementModel 有 date 字段，这里简化显示
-                                      'Recent',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
