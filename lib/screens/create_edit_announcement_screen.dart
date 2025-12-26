@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../services/firestore_service.dart';
 import '../providers/app_provider.dart';
+import '../widgets/glass_container.dart'; // 引入 GlassContainer
 
 class CreateEditAnnouncementScreen extends StatefulWidget {
   final bool isEdit;
@@ -28,6 +29,10 @@ class _CreateEditAnnouncementScreenState extends State<CreateEditAnnouncementScr
   final _titleController = TextEditingController();
   final _summaryController = TextEditingController();
   final _contentController = TextEditingController();
+
+  // 背景渐变
+  final Color bgGradientStart = const Color(0xFFF3F4F6);
+  final Color bgGradientEnd = const Color(0xFFE5E7EB);
 
   String _category = 'maintenance';
   String _priority = 'medium';
@@ -53,7 +58,7 @@ class _CreateEditAnnouncementScreenState extends State<CreateEditAnnouncementScr
       _category = init['category'] ?? _category;
       _priority = init['priority'] ?? _priority;
       _status = init['status'] ?? _status;
-      // parse publishedAt supporting DateTime, int (ms), String, or Timestamp
+
       final rawPub = init['publishedAt'];
       if (rawPub == null) {
         _publishedAt = DateTime.now();
@@ -71,7 +76,6 @@ class _CreateEditAnnouncementScreenState extends State<CreateEditAnnouncementScr
         }
       }
 
-      // parse expireAt similarly
       final rawExp = init['expireAt'];
       if (rawExp == null) {
         _expireAt = null;
@@ -89,7 +93,6 @@ class _CreateEditAnnouncementScreenState extends State<CreateEditAnnouncementScr
         }
       }
       _pinned = init['isPinned'] ?? false;
-      // preload existing image if editing
       if (init['image'] != null) {
         _imageUrl = init['image'].toString();
       }
@@ -104,6 +107,7 @@ class _CreateEditAnnouncementScreenState extends State<CreateEditAnnouncementScr
     super.dispose();
   }
 
+  // ... _pickPublishedAt, _pickExpireAt, _pickImage, _uploadImage, _removeImage 方法保持不变 ...
   Future<void> _pickPublishedAt() async {
     final date = await showDatePicker(
       context: context,
@@ -176,7 +180,6 @@ class _CreateEditAnnouncementScreenState extends State<CreateEditAnnouncementScr
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    // expireAt must be null or > publishedAt
     if (_expireAt != null && !_expireAt!.isAfter(_publishedAt)) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Expire time must be after published time')));
       return;
@@ -217,146 +220,218 @@ class _CreateEditAnnouncementScreenState extends State<CreateEditAnnouncementScr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(widget.isEdit ? 'Edit Announcement' : 'Create Announcement'),
+        title: Text(widget.isEdit ? 'Edit Announcement' : 'Create Announcement', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(color: Colors.white54, shape: BoxShape.circle),
+            child: const Icon(Icons.arrow_back_ios_new, size: 18, color: Colors.black87),
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(labelText: 'Title'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Title is required' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _summaryController,
-                decoration: const InputDecoration(labelText: 'Summary'),
-                maxLines: 2,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Summary is required' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _contentController,
-                decoration: const InputDecoration(labelText: 'Content'),
-                maxLines: 6,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Content is required' : null,
-              ),
-              const SizedBox(height: 12),
-              // Image picker / preview
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Image', style: TextStyle(fontSize: 14)),
-                  const SizedBox(height: 8),
-                  if (_imageUrl != null)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(_imageUrl!, height: 160, width: double.infinity, fit: BoxFit.cover),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            TextButton.icon(onPressed: _uploadingImage ? null : _pickImage, icon: const Icon(Icons.edit), label: const Text('Change')),
-                            const SizedBox(width: 8),
-                            TextButton.icon(onPressed: _removeImage, icon: const Icon(Icons.delete), label: const Text('Remove')),
-                          ],
-                        ),
-                      ],
-                    )
-                  else
-                    Row(
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: _uploadingImage ? null : _pickImage,
-                          icon: const Icon(Icons.image_outlined),
-                          label: const Text('Choose Image'),
-                        ),
-                        const SizedBox(width: 12),
-                        if (_uploadingImage) const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                      ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [bgGradientStart, bgGradientEnd],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: GlassContainer(
+              opacity: 0.8,
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: _titleController,
+                      decoration: _buildInputDecoration('Title', Icons.title),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Title is required' : null,
                     ),
-                ],
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _summaryController,
+                      decoration: _buildInputDecoration('Summary', Icons.short_text),
+                      maxLines: 2,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Summary is required' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _contentController,
+                      decoration: _buildInputDecoration('Content', Icons.article_outlined),
+                      maxLines: 6,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Content is required' : null,
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Image Picker Section
+                    const Text('Featured Image', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    if (_imageUrl != null)
+                      Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(_imageUrl!, height: 200, width: double.infinity, fit: BoxFit.cover),
+                          ),
+                          Positioned(
+                            right: 8,
+                            top: 8,
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: Colors.white,
+                                  child: IconButton(onPressed: _uploadingImage ? null : _pickImage, icon: const Icon(Icons.edit, color: Colors.blue)),
+                                ),
+                                const SizedBox(width: 8),
+                                CircleAvatar(
+                                  backgroundColor: Colors.white,
+                                  child: IconButton(onPressed: _removeImage, icon: const Icon(Icons.delete, color: Colors.red)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      InkWell(
+                        onTap: _uploadingImage ? null : _pickImage,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          height: 150,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.withOpacity(0.3), style: BorderStyle.solid),
+                          ),
+                          child: _uploadingImage
+                              ? const Center(child: CircularProgressIndicator())
+                              : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_photo_alternate_outlined, size: 40, color: Colors.grey[600]),
+                              const SizedBox(height: 8),
+                              Text('Tap to upload image', style: TextStyle(color: Colors.grey[600])),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 24),
+
+                    // --- 修改开始：改为垂直排列，防止宽度溢出 ---
+                    DropdownButtonFormField<String>(
                       value: _category,
-                      items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                      items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c.toUpperCase()))).toList(),
                       onChanged: (v) => setState(() => _category = v ?? _category),
-                      decoration: const InputDecoration(labelText: 'Category'),
+                      decoration: _buildInputDecoration('Category', Icons.category_outlined),
+                      isExpanded: true, // 确保文字过长时自动截断或换行，防止内部溢出
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
+                    const SizedBox(height: 16),
+
+                    DropdownButtonFormField<String>(
                       value: _priority,
-                      items: priorities.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                      items: priorities.map((p) => DropdownMenuItem(value: p, child: Text(p.toUpperCase()))).toList(),
                       onChanged: (v) => setState(() => _priority = v ?? _priority),
-                      decoration: const InputDecoration(labelText: 'Priority'),
+                      decoration: _buildInputDecoration('Priority', Icons.flag_outlined),
+                      isExpanded: true,
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _status,
-                items: statuses.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                onChanged: (v) => setState(() => _status = v ?? _status),
-                decoration: const InputDecoration(labelText: 'Status'),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
+                    // --- 修改结束 ---
+
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: _status,
+                      items: statuses.map((s) => DropdownMenuItem(value: s, child: Text(s.toUpperCase()))).toList(),
+                      onChanged: (v) => setState(() => _status = v ?? _status),
+                      decoration: _buildInputDecoration('Status', Icons.info_outline),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // --- 同样建议优化：日期选择器也改为垂直排列，避免潜在溢出 ---
+                    InkWell(
                       onTap: _pickPublishedAt,
                       child: InputDecorator(
-                        decoration: const InputDecoration(labelText: 'Published At'),
-                        child: Text(DateFormat('yyyy-MM-dd HH:mm').format(_publishedAt)),
+                        decoration: _buildInputDecoration('Published At', Icons.calendar_today),
+                        child: Text(
+                            DateFormat('yyyy-MM-dd HH:mm').format(_publishedAt),
+                            style: const TextStyle(fontSize: 15, color: Colors.black87)
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: InkWell(
+                    const SizedBox(height: 16),
+
+                    InkWell(
                       onTap: _pickExpireAt,
                       child: InputDecorator(
-                        decoration: const InputDecoration(labelText: 'Expire At (optional)'),
-                        child: Text(_expireAt == null ? 'Not set' : DateFormat('yyyy-MM-dd HH:mm').format(_expireAt!)),
+                        decoration: _buildInputDecoration('Expires At (Optional)', Icons.event_busy),
+                        child: Text(
+                            _expireAt == null ? 'Never' : DateFormat('yyyy-MM-dd HH:mm').format(_expireAt!),
+                            style: const TextStyle(fontSize: 15, color: Colors.black87)
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SwitchListTile(
-                title: const Text('Pinned'),
-                value: _pinned,
-                onChanged: (v) => setState(() => _pinned = v),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submit,
-                  child: Text(widget.isEdit ? 'Update' : 'Create'),
+                    // -----------------------------------------------------
+
+                    const SizedBox(height: 16),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Pin to Top', style: TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: const Text('Show this at the top of the list'),
+                      secondary: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), shape: BoxShape.circle),
+                        child: const Icon(Icons.push_pin, color: Colors.orange),
+                      ),
+                      value: _pinned,
+                      onChanged: (v) => setState(() => _pinned = v),
+                    ),
+                    const SizedBox(height: 32),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4F46E5),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 2,
+                        ),
+                        onPressed: _submit,
+                        child: Text(
+                          widget.isEdit ? 'Update Announcement' : 'Publish Announcement',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
+
+  InputDecoration _buildInputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 20, color: Colors.grey[600]),
+      filled: true,
+      fillColor: Colors.white.withOpacity(0.5),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withOpacity(0.2))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 1.5)),
+    );
+  }
 }
-
-

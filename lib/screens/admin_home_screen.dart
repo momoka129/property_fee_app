@@ -402,8 +402,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   }
 
   Widget _buildRevenueChart() {
+    // 增加高度以容纳图例
     return Container(
-      height: 260,
+      height: 300,
       padding: const EdgeInsets.fromLTRB(20, 25, 25, 10),
       decoration: BoxDecoration(
         color: cardColor,
@@ -411,73 +412,178 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         boxShadow: kCardShadow,
       ),
       child: StreamBuilder<List<BillModel>>(
+        // 这个流已经是实时的，无需更改
         stream: FirestoreService.getAllBillsStream(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
           final bills = snapshot.data!;
           final now = DateTime.now();
-          List<FlSpot> spots = [];
+
+          // 1. 准备两条线的数据点
+          List<FlSpot> paidSpots = [];
+          List<FlSpot> unpaidSpots = [];
+
+          // 2. 遍历过去6个月
           for (int i = 5; i >= 0; i--) {
+            // 计算当月的时间范围
             final monthStart = DateTime(now.year, now.month - i, 1);
             final monthEnd = DateTime(now.year, now.month - i + 1, 0);
+
+            // 过滤：当月已支付总额
             final monthlyRevenue = bills
                 .where((b) => b.status == 'paid' && b.billingDate.isAfter(monthStart) && b.billingDate.isBefore(monthEnd))
                 .fold(0.0, (sum, b) => sum + b.amount);
-            spots.add(FlSpot((5-i).toDouble(), monthlyRevenue));
+            paidSpots.add(FlSpot((5-i).toDouble(), monthlyRevenue));
+
+            // 过滤：当月未支付总额 (Unpaid + Overdue)
+            // 注意：这里使用了 totalAmount (本金+罚金)，如果你的 BillModel 没有 totalAmount getter，请改用 (b.amount + (b.penalty ?? 0))
+            final monthlyUnpaid = bills
+                .where((b) => (b.status == 'unpaid' || b.status == 'overdue') && b.billingDate.isAfter(monthStart) && b.billingDate.isBefore(monthEnd))
+                .fold(0.0, (sum, b) => sum + (b.amount + (b.penalty ?? 0.0)));
+            unpaidSpots.add(FlSpot((5-i).toDouble(), monthlyUnpaid));
           }
-          double maxY = spots.map((e) => e.y).reduce((a, b) => a > b ? a : b);
+
+          // 3. 计算 Y 轴最大值 (取两组数据中最大的)
+          double maxPaidY = paidSpots.isEmpty ? 0 : paidSpots.map((e) => e.y).reduce((a, b) => a > b ? a : b);
+          double maxUnpaidY = unpaidSpots.isEmpty ? 0 : unpaidSpots.map((e) => e.y).reduce((a, b) => a > b ? a : b);
+          double maxY = maxPaidY > maxUnpaidY ? maxPaidY : maxUnpaidY;
           if (maxY == 0) maxY = 100;
 
-          return LineChart(
-            LineChartData(
-              gridData: FlGridData(show: false),
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    getTitlesWidget: (value, meta) {
-                      final date = DateTime(now.year, now.month - (5 - value.toInt()), 1);
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 10.0),
-                        child: Text(DateFormat('MMM').format(date), style: TextStyle(fontSize: 11, color: Colors.grey[400], fontWeight: FontWeight.w600)),
-                      );
-                    },
-                    interval: 1,
+          return Column(
+            children: [
+              Expanded(
+                child: LineChart(
+                  LineChartData(
+                    gridData: FlGridData(show: false),
+                    titlesData: FlTitlesData(
+                      leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) {
+                            final date = DateTime(now.year, now.month - (5 - value.toInt()), 1);
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 10.0),
+                              child: Text(
+                                  DateFormat('MMM').format(date),
+                                  style: TextStyle(fontSize: 11, color: Colors.grey[400], fontWeight: FontWeight.w600)
+                              ),
+                            );
+                          },
+                          interval: 1,
+                        ),
+                      ),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    minX: 0, maxX: 5,
+                    minY: 0, maxY: maxY * 1.25, // 顶部留白
+                    lineBarsData: [
+// --- Line 1: 已支付 (Revenue) ---
+                      LineChartBarData(
+                        spots: paidSpots,
+                        isCurved: true,
+                        curveSmoothness: 0.35,
+                        preventCurveOverShooting: true, // <--- 添加这行：防止曲线因平滑处理而掉到0以下
+                        color: primaryColor,
+                        barWidth: 3,
+                        isStrokeCapRound: true,
+                        dotData: FlDotData(show: false),
+                        belowBarData: BarAreaData(
+                            show: true,
+                            gradient: LinearGradient(
+                                colors: [primaryColor.withOpacity(0.2), primaryColor.withOpacity(0.0)],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter
+                            )
+                        ),
+                      ),
+
+                      // --- Line 2: 未支付 (Unpaid) ---
+                      LineChartBarData(
+                        spots: unpaidSpots,
+                        isCurved: true,
+                        curveSmoothness: 0.35,
+                        preventCurveOverShooting: true, // <--- 添加这行：防止曲线掉到0以下
+                        color: errorColor,
+                        barWidth: 3,
+                        isStrokeCapRound: true,
+                        dotData: FlDotData(
+                            show: true,
+                            getDotPainter: (spot, percent, barData, index) {
+                              return FlDotCirclePainter(radius: 3, color: Colors.white, strokeWidth: 2, strokeColor: errorColor);
+                            }
+                        ),
+                        belowBarData: BarAreaData(
+                            show: true,
+                            gradient: LinearGradient(
+                                colors: [errorColor.withOpacity(0.15), errorColor.withOpacity(0.0)],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter
+                            )
+                        ),
+                      ),
+                    ],
+                    // 触摸提示：同时显示两个数值
+                    lineTouchData: LineTouchData(
+                      touchTooltipData: LineTouchTooltipData(
+                        tooltipPadding: const EdgeInsets.all(8),
+                        // --- 修改开始：使用 getTooltipColor 替代 tooltipBgColor ---
+                        getTooltipColor: (touchedSpot) => Colors.black87,
+                        // --- 修改结束 ---
+                        getTooltipItems: (touchedSpots) {
+                          return touchedSpots.map((spot) {
+                            final isRevenue = spot.barIndex == 0;
+                            return LineTooltipItem(
+                              // 文本内容：区分 Paid 和 Unpaid
+                              '${isRevenue ? "Paid" : "Unpaid"}: RM ${spot.y.toStringAsFixed(0)}\n',
+                              TextStyle(
+                                // 文本颜色：Revenue用主色，Unpaid用浅红色
+                                color: isRevenue ? primaryColor : const Color(0xFFFAA0A0),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            );
+                          }).toList();
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ),
-              borderData: FlBorderData(show: false),
-              minX: 0, maxX: 5, minY: 0, maxY: maxY * 1.25,
-              lineBarsData: [
-                LineChartBarData(
-                  spots: spots,
-                  isCurved: true,
-                  curveSmoothness: 0.35,
-                  color: primaryColor,
-                  barWidth: 3,
-                  isStrokeCapRound: true,
-                  dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) {
-                        return FlDotCirclePainter(radius: 4, color: Colors.white, strokeWidth: 2, strokeColor: primaryColor);
-                      }
-                  ),
-                  belowBarData: BarAreaData(show: true, gradient: LinearGradient(colors: [primaryColor.withOpacity(0.2), primaryColor.withOpacity(0.0)], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
-                ),
-              ],
-              lineTouchData: LineTouchData(
-                touchTooltipData: LineTouchTooltipData(
-                  tooltipPadding: const EdgeInsets.all(8),
-                  getTooltipItems: (touchedSpots) => touchedSpots.map((spot) => LineTooltipItem('RM ${spot.y.toStringAsFixed(0)}', const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))).toList(),
-                ),
-              ),
-            ),
+              const SizedBox(height: 10),
+              // --- 图例区域 (Legend) ---
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildChartLegend(primaryColor, "Revenue"),
+                  const SizedBox(width: 20),
+                  _buildChartLegend(errorColor, "Unpaid"),
+                ],
+              )
+            ],
           );
         },
       ),
+    );
+  }
+
+  // 新增一个简单的图例组件
+  Widget _buildChartLegend(Color color, String label) {
+    return Row(
+      children: [
+        Container(
+          width: 10, height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[600]),
+        ),
+      ],
     );
   }
 
