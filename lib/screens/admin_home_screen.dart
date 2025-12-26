@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import '../services/firestore_service.dart';
 import '../models/bill_model.dart';
 import '../models/repair_model.dart';
@@ -10,6 +11,8 @@ import '../routes.dart';
 import 'edit_profile_screen.dart';
 import '../widgets/glass_container.dart'; // 引入 GlassContainer
 import 'admin_users_screen.dart';
+import '../providers/app_provider.dart';
+import '../services/avatar_service.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -37,6 +40,24 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       offset: const Offset(0, 10),
     ),
   ];
+
+  ImageProvider? _getAdminAvatarImageProvider() {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
+    final currentUser = appProvider.currentUser;
+    if (currentUser != null && currentUser.avatar != null && AvatarService.isValidAvatarUrl(currentUser.avatar!)) {
+      return NetworkImage(currentUser.avatar!);
+    }
+    return const AssetImage('assets/images/avatar_default.png');
+  }
+
+  String _getAdminInitials() {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
+    final currentUser = appProvider.currentUser;
+    if (currentUser != null) {
+      return currentUser.name.split(' ').where((part) => part.isNotEmpty).map((part) => part[0]).take(2).join().toUpperCase();
+    }
+    return 'A'; // Admin default
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,9 +180,25 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   ),
                 ],
               ),
-              child: const CircleAvatar(
+              child: CircleAvatar(
                 radius: 22,
-                backgroundImage: AssetImage('assets/images/avatar_default.png'),
+                backgroundImage: _getAdminAvatarImageProvider(),
+                child: Consumer<AppProvider>(
+                  builder: (context, appProvider, _) {
+                    final currentUser = appProvider.currentUser;
+                    if (currentUser != null && (currentUser.avatar == null || !AvatarService.isValidAvatarUrl(currentUser.avatar!))) {
+                      return Text(
+                        _getAdminInitials(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF4F46E5),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
               ),
             ),
           ),

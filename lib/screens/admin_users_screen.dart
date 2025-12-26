@@ -3,6 +3,7 @@ import '../models/user_model.dart';
 import '../services/firestore_service.dart';
 import '../widgets/glass_container.dart'; // 确保路径正确
 import '../widgets/malaysia_phone_input.dart' as mp;
+import '../services/avatar_service.dart';
 
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
@@ -18,6 +19,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
   final Color primaryColor = const Color(0xFF4F46E5);
   final Color bgGradientStart = const Color(0xFFF3F4F6);
   final Color bgGradientEnd = const Color(0xFFE5E7EB);
+
+  ImageProvider? _getUserAvatarImageProvider(UserModel user) {
+    if (user.avatar != null && AvatarService.isValidAvatarUrl(user.avatar!)) {
+      return NetworkImage(user.avatar!);
+    }
+    return null;
+  }
 
   @override
   void initState() {
@@ -703,18 +711,17 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
         child: ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           onTap: () => _showEditUserDialog(user, isWorker),
-          leading: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: isWorker ? Colors.orange.shade50 : Colors.blue.shade50,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isWorker ? Icons.engineering : Icons.person,
-              color: isWorker ? Colors.orange : primaryColor,
-              size: 24,
-            ),
+          leading: CircleAvatar(
+            radius: 24,
+            backgroundImage: _getUserAvatarImageProvider(user),
+            backgroundColor: isWorker ? Colors.orange.shade50 : Colors.blue.shade50,
+            child: _getUserAvatarImageProvider(user) == null
+                ? Icon(
+                    isWorker ? Icons.engineering : Icons.person,
+                    color: isWorker ? Colors.orange : primaryColor,
+                    size: 24,
+                  )
+                : null,
           ),
           title: Text(
             user.name,

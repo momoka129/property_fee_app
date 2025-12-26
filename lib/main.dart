@@ -40,6 +40,16 @@ void main() async {
       } catch (e) {
         debugPrint('Data migration failed: $e');
       }
+
+      // 同步头像数据到Firebase
+      try {
+        debugPrint('Starting avatar data sync...');
+        await DataMigrationService.syncUserAvatarsToFirebase();
+        final status = await DataMigrationService.getAvatarSyncStatus();
+        debugPrint('Avatar sync completed. Status: $status');
+      } catch (e) {
+        debugPrint('Avatar sync failed: $e');
+      }
     }
   } catch (e, st) {
     // 打印错误但继续运行，避免应用卡在原生启动页
