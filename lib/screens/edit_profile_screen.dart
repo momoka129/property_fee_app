@@ -95,6 +95,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             }
           }
 
+          // Check if the new phone number is already in use by another user
+          final newPhone = _phoneController.text.trim();
+          if (newPhone.isNotEmpty && newPhone != (currentUser.phoneNumber ?? '')) {
+            final phoneExists = await FirestoreService.checkPhoneExists(newPhone, excludeUserId: currentUser.id);
+            if (phoneExists) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('This phone number is already in use by another account.'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+          }
+
           final updatedUser = currentUser.copyWith(
             name: _nameController.text.trim(),
             phoneNumber: _phoneController.text.trim().isEmpty
