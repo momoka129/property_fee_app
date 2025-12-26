@@ -315,9 +315,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                       runSpacing: 16,
                       children: [
                         _buildStatCard(title: 'Total Revenue', value: 'RM ${totalRevenue.toStringAsFixed(0)}', icon: Icons.monetization_on_outlined, themeColor: successColor, width: width, isMain: true),
-                        _buildStatCard(title: 'Overdue Bills', value: '$overdueCount', icon: Icons.error_outline, themeColor: errorColor, width: width),
-                        _buildStatCard(title: 'Pending Repairs', value: '$pendingRepairs', icon: Icons.home_repair_service_outlined, themeColor: warningColor, width: width),
-                        _buildStatCard(title: 'Collected Parcels', value: '$activePackages', icon: Icons.inventory_2_outlined, themeColor: primaryColor, width: width),
+                        _buildStatCard(title: 'Overdue Bills', value: '$overdueCount', icon: Icons.error_outline, themeColor: errorColor, width: width, isMain: true),
+                        _buildStatCard(title: 'Pending Repairs', value: '$pendingRepairs', icon: Icons.home_repair_service_outlined, themeColor: warningColor, width: width, isMain: true),
+                        _buildStatCard(title: 'Collected Parcels', value: '$activePackages', icon: Icons.inventory_2_outlined, themeColor: primaryColor, width: width, isMain: true),
                       ],
                     );
                   },
