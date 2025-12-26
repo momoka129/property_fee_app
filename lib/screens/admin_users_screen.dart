@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/firestore_service.dart';
 import '../widgets/glass_container.dart'; // 确保路径正确
+import '../widgets/malaysia_phone_input.dart' as mp;
 
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
@@ -92,12 +93,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                     ),
                     const SizedBox(height: 16),
 
-                    // 输入框 Phone
-                    _buildGlassTextField(
+                    // 输入框 Phone (使用 MalaysiaPhoneInput 确保9位数格式)
+                    mp.MalaysiaPhoneInput(
                       controller: phoneController,
                       label: 'Phone Number',
-                      icon: Icons.phone_android_outlined,
-                      keyboardType: TextInputType.phone,
+                      required: true, // 工人电话为必填
                     ),
                     const SizedBox(height: 16),
 
@@ -313,8 +313,21 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> with SingleTickerPr
                     // Email
                     _buildGlassTextField(controller: emailController, label: 'Email', icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
                     const SizedBox(height: 12),
-                    // Phone
-                    _buildGlassTextField(controller: phoneController, label: 'Phone Number', icon: Icons.phone_android_outlined, keyboardType: TextInputType.phone),
+                    // Phone (工人使用 MalaysiaPhoneInput，其他使用普通输入)
+                    if (isWorker) ...[
+                      mp.MalaysiaPhoneInput(
+                        controller: phoneController,
+                        label: 'Phone Number',
+                        required: true, // 工人电话必填
+                      ),
+                    ] else ...[
+                      _buildGlassTextField(
+                        controller: phoneController,
+                        label: 'Phone Number',
+                        icon: Icons.phone_android_outlined,
+                        keyboardType: TextInputType.phone,
+                      ),
+                    ],
                     const SizedBox(height: 12),
 
                     // Address selection (only for residents). For workers, keep as static text.
