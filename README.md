@@ -2,7 +2,7 @@
 
 ## 📱 Project Overview
 
-This is a comprehensive property management mobile application developed with Flutter, running on local mock data without requiring a backend database. Suitable for graduation projects or prototype demonstrations.
+This is a comprehensive property management mobile application developed with Flutter, connected to Firebase database for data storage and management. Combining local mock data with cloud data synchronization, suitable for graduation projects or prototype demonstrations.
 
 **Author**: Huang Tianjing (黄天竞)  
 **Student ID**: SWE2209518  
@@ -70,7 +70,7 @@ This is a comprehensive property management mobile application developed with Fl
 2. **Network Image Loading** - Image caching and loading using cached_network_image
 3. **Smooth Animations** - Custom transition animations and micro-interactions
 4. **Responsive Layout** - Adapts to different screen sizes
-5. **Local Data Simulation** - Complete data models and mock data
+5. **Data Management** - Combining Firebase database with local mock data
 6. **Elegant Error Handling** - User-friendly error messages
 
 ## 📦 Core Dependencies
@@ -380,7 +380,7 @@ Email: swe2209518@xmu.edu.my
 
 ### How to Run
 
-Since this is a local mock data project, all implemented functions can run without configuring a database!
+Since this project combines Firebase database with local mock data, all implemented functions can run with cloud data synchronization!
 
 ```bash
 flutter run
